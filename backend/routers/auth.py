@@ -44,14 +44,19 @@ async def login(request: LoginRequest):
 
     if not result.data or len(result.data) == 0:
         # ── AUTO-REGISTRATION LOGIC ──
-        # If student not found, create them. USN is used as name if name is missing.
+        # Since student not found, create them. Make sure Name and Email are provided!
+        if not request.name or not request.name.strip():
+            raise HTTPException(status_code=400, detail="Full Name is required for registration.")
+        if not request.email or not request.email.strip():
+            raise HTTPException(status_code=400, detail="Email Address is required for registration.")
+
         try:
             # Create the student record
             new_student_data = {
                 "usn": request.usn.strip().upper(),
                 "roll_number": request.usn.strip().upper(), # Sync legacy column
-                "name": request.name.strip() if request.name and request.name.strip() else request.usn.strip().upper(),
-                "email": request.email.strip() if request.email and request.email.strip() else None,
+                "name": request.name.strip(),
+                "email": request.email.strip(),
                 "branch": request.branch or "CS",
                 "password_hash": hash_password(request.password)
             }
@@ -146,9 +151,9 @@ async def login(request: LoginRequest):
     return LoginResponse(
         access_token=token,
         student_id=student["id"],
-        student_name=student["name"],
-        email=student.get("email"),
-        branch=student.get("branch", "CS"),
+        student_name=request.name or student.get("name"),
+        email=request.email or student.get("email"),
+        branch=current_branch,
         exam_start_time=started_at,
         exam_duration_minutes=settings.exam_duration_minutes,
     )

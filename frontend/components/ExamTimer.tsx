@@ -4,9 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import styles from "./ExamTimer.module.css";
 
 interface ExamTimerProps {
-  startTime: string;          // ISO timestamp when exam started
-  durationMinutes: number;    // exam length in minutes
-  onExpire: () => void;       // called when timer hits 0
+  startTime: string;
+  durationMinutes: number;
+  onExpire: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -14,26 +14,34 @@ function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
+  // If no hours, just mm:ss
+  if (h === 0) return [m, s].map((v) => String(v).padStart(2, "0")).join(":");
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
 export default function ExamTimer({ startTime, durationMinutes, onExpire }: ExamTimerProps) {
   const [remaining, setRemaining] = useState<number>(0);
+  const [percentage, setPercentage] = useState<number>(100);
   const expiredRef = useRef(false);
 
   useEffect(() => {
+    const totalMs = durationMinutes * 60 * 1000;
+    
     function calcRemaining() {
-      const endMs =
-        new Date(startTime).getTime() + durationMinutes * 60 * 1000;
-      return Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+      const endMs = new Date(startTime).getTime() + totalMs;
+      const timeLeft = Math.max(0, endMs - Date.now());
+      return Math.floor(timeLeft / 1000);
     }
 
-    // Set initial value
-    setRemaining(calcRemaining());
+    const initialSecs = calcRemaining();
+    setRemaining(initialSecs);
+    setPercentage(Math.max(0, Math.min(100, (initialSecs / (durationMinutes * 60)) * 100)));
 
     const id = setInterval(() => {
       const secs = calcRemaining();
       setRemaining(secs);
+      setPercentage(Math.max(0, Math.min(100, (secs / (durationMinutes * 60)) * 100)));
+      
       if (secs <= 0 && !expiredRef.current) {
         expiredRef.current = true;
         clearInterval(id);
@@ -44,24 +52,34 @@ export default function ExamTimer({ startTime, durationMinutes, onExpire }: Exam
     return () => clearInterval(id);
   }, [startTime, durationMinutes, onExpire]);
 
-  const urgency =
-    remaining <= 300  // 5 minutes
-      ? "urgent"
-      : remaining <= 600  // 10 minutes
-      ? "warning"
-      : "safe";
+  // HSL Color logic: 120 is Green, 60 is Yellow, 0 is Red. 
+  // We map 100% -> 120 hue, 0% -> 0 hue.
+  const currentHue = Math.floor((percentage / 100) * 120);
+  const barColor = `hsl(${currentHue}, 85%, 45%)`;
+  const isUrgent = remaining <= 300; // 5 minutes
 
   return (
-    <div className={`${styles.timer} ${styles[urgency]}`}>
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className={styles.icon}>
-        <circle cx="8" cy="9" r="6" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M8 6v3l2 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M6 1h4M8 1v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-      <span className={`${styles.time} mono`}>{formatTime(remaining)}</span>
-      {urgency === "urgent" && (
-        <span className={styles.pulse} aria-hidden="true" />
-      )}
+    <div className={styles.timerWrapper}>
+      <div className={styles.timerHeader}>
+        <span className={styles.label}>Time Remaining:</span>
+        <span className={`${styles.time} ${isUrgent ? styles.urgentText : ""}`}>
+          {formatTime(remaining)}
+        </span>
+      </div>
+      <div className={styles.barContainer}>
+        {/* Dynamic color fill sliding backwards */}
+        <div 
+          className={styles.barFill} 
+          style={{ 
+            width: `${percentage}%`,
+            backgroundColor: barColor,
+            boxShadow: `0 0 10px ${barColor.replace("45%)", "45%, 0.5)")}`
+          }}
+        />
+        {/* Mock thumb matching user references */}
+        <div className={styles.barThumb} style={{ left: `${percentage}%` }} />
+        {/* Optional trailing limit indicators */}
+      </div>
     </div>
   );
 }

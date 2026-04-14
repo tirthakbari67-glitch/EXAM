@@ -1,0 +1,144 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import styles from "./instructions.module.css";
+
+export default function InstructionsPage() {
+  const router = useRouter();
+  const [studentInfo, setStudentInfo] = useState<{name: string, usn: string} | null>(null);
+
+  useEffect(() => {
+    // Check authentication
+    const token = sessionStorage.getItem("exam_token");
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      // Decode JWT to get student details
+      const payloadBase64 = token.split(".")[1];
+      const decodedStr = atob(payloadBase64);
+      const payload = JSON.parse(decodedStr);
+      
+      setStudentInfo({
+        name: payload.name || payload.student_name || "Student",
+        usn: payload.usn || "Candidate",
+      });
+    } catch (err) {
+      console.error("Could not parse token", err);
+      // Fallback
+      setStudentInfo({ name: "Student", usn: "Candidate" });
+    }
+  }, [router]);
+
+  const handleStartExam = () => {
+    router.push("/exam");
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("exam_token");
+    sessionStorage.removeItem("exam_student");
+    router.replace("/login");
+  };
+
+  if (!studentInfo) return null; // Wait until auth check completes
+
+  return (
+    <div className={styles.wrapper}>
+      {/* ── Header ── */}
+      <header className={styles.header}>
+        <div className={styles.headerLeft}>
+          {/* Logo or empty space */}
+        </div>
+        <div className={styles.headerRight}>
+          <div className={styles.studentInfo}>
+            <span className={styles.studentName}>{studentInfo.name}</span>
+            <span className={styles.studentRole}>Candidate</span>
+          </div>
+          <button onClick={handleLogout} className={styles.logoutBtn} title="Logout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </header>
+
+      {/* ── Main Instructions ── */}
+      <main className={styles.main}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>Innovation Quiz Instructions</h1>
+
+          <div className={styles.detailsBox}>
+            <h2 className={styles.detailsTitle}>Exam Details</h2>
+            <div className={styles.detailsGrid}>
+              <div className={styles.detailItem}>
+                <svg className={styles.detailIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Duration: 1 minutes
+              </div>
+              <div className={styles.detailItem}>
+                <svg className={styles.detailIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                Total Questions: 40
+              </div>
+              <div className={styles.detailItem}>
+                <svg className={styles.detailIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                Proctoring: Enabled
+              </div>
+            </div>
+          </div>
+
+          <h2 className={styles.instructionsTitle}>Important Instructions</h2>
+          <ul className={styles.list}>
+            <li className={styles.listItem}>
+              <span className={styles.bullet}>•</span>
+              Read each question carefully before answering.
+            </li>
+            <li className={styles.listItem}>
+              <span className={styles.bullet}>•</span>
+              You can navigate between questions using the navigation buttons.
+            </li>
+            <li className={styles.listItem}>
+              <span className={styles.bullet}>•</span>
+              Your answers will be auto-saved. However, ensure you submit before time expires.
+            </li>
+            <li className={styles.listItem}>
+              <span className={styles.bullet}>•</span>
+              Do not switch tabs, minimize the browser window, or exit fullscreen during the exam.
+            </li>
+            <li className={styles.listItem}>
+              <span className={styles.bullet}>•</span>
+              Right-clicking, copying, pasting, and all keyboard shortcuts are strictly disabled and monitored. Do not switch tabs, automatic submission and disqualify you.
+            </li>
+            <li className={styles.listItem}>
+              <span className={styles.bullet}>•</span>
+              You can mark questions for review and come back to them later.
+            </li>
+          </ul>
+
+          <div className={styles.actionArea}>
+            <button onClick={handleStartExam} className={styles.startBtn}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              Start Exam
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

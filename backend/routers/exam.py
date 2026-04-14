@@ -69,6 +69,7 @@ def get_questions(
         .select("id, text, options, branch, order_index, marks")
         .eq("branch", current.get("branch", "CS"))
         .order("order_index")
+        .limit(40)
         .execute()
     )
 
