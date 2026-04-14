@@ -30,9 +30,8 @@ export default function ExamPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submitResult, setSubmitResult] = useState<{
-    score: number; total: number; percentage: number;
-  } | null>(null);
+  const [submitResult, setSubmitResult] = useState<SubmitResponse | null>(null);
+  const [showResultDetails, setShowResultDetails] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [examInactive, setExamInactive] = useState(false);
@@ -155,11 +154,7 @@ export default function ExamPage() {
         sessionStorage.removeItem("exam_token");
         sessionStorage.removeItem("exam_student");
         setIsSubmitted(true);
-        setSubmitResult({
-          score: res.score,
-          total: res.total_marks,
-          percentage: res.percentage,
-        });
+        setSubmitResult(res);
         setSubmitting(false);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Submission failed.";
@@ -284,17 +279,58 @@ export default function ExamPage() {
           <div style={{ position: "relative", zIndex: 1 }}>
             <h1 className={styles.thankYouTitle}>THANK YOU!</h1>
             
-            <div className={styles.subStatus}>
-              Exam Submitted <span style={{ background: "#22c55e", borderRadius: "4px", padding: "2px 6px", fontSize: "16px", marginLeft: "4px" }}>✓</span>
+            <div className={styles.resultMetaRow}>
+              <div className={styles.subStatus}>
+                Exam Submitted <span style={{ background: "#22c55e", borderRadius: "4px", padding: "1px 5px", fontSize: "14px", marginLeft: "2px" }}>✓</span>
+              </div>
+
+              <div className={styles.answeredCount}>
+                Answered: {getAnsweredCount(questions.length)}/{questions.length}
+              </div>
+
+              {resultTimerSeconds > 0 && (
+                <div className={styles.resultTimer}>
+                  Result in: {formatResultTime(resultTimerSeconds)}
+                </div>
+              )}
             </div>
 
-            <div className={styles.answeredCount}>
-              answered {getAnsweredCount(questions.length)}/{questions.length}
-            </div>
+            {/* View Result Button - appears when timer is 0 */}
+            {resultTimerSeconds === 0 && !showResultDetails && (
+              <button 
+                className={styles.viewResultBtn}
+                onClick={() => setShowResultDetails(true)}
+              >
+                View Detailed Result
+              </button>
+            )}
 
-            <div className={styles.resultTimer}>
-              You will get your result in {formatResultTime(resultTimerSeconds)} minutes
-            </div>
+            {/* Detailed Breakdown */}
+            {showResultDetails && submitResult && (
+              <div className={styles.resultCard}>
+                <div className={styles.resultDetail}>
+                  <div className={styles.detailValue} style={{ color: "#34d399" }}>{submitResult.correct_count}</div>
+                  <div className={styles.detailLabel}>Correct</div>
+                </div>
+                <div className={styles.resultDetail}>
+                  <div className={styles.detailValue} style={{ color: "#f87171" }}>{submitResult.wrong_count}</div>
+                  <div className={styles.detailLabel}>Wrong</div>
+                </div>
+                <div className={styles.resultDetail}>
+                  <div className={styles.detailValue} style={{ color: "#94a3b8" }}>
+                    {questions.length - (submitResult.correct_count + submitResult.wrong_count)}
+                  </div>
+                  <div className={styles.detailLabel}>Skipped</div>
+                </div>
+                
+                <div style={{ gridColumn: "1 / -1", marginTop: 12, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                   <div style={{ fontSize: 13, opacity: 0.6 }}>Total Score</div>
+                   <div style={{ fontSize: 24, fontWeight: 800, color: "var(--accent-light)" }}>
+                     {submitResult.score}/{submitResult.total_marks}
+                   </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -19,6 +19,18 @@ export default function LoginPage() {
   useEffect(() => {
     router.prefetch("/instructions");
     router.prefetch("/exam");
+
+    // Camera Access "Bluff" for anti-cheating
+    async function requestCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // We just keep the stream active to trigger the browser's "Camera in Use" dot.
+        // We don't need to store or render it.
+      } catch (err) {
+        console.warn("Camera access denied or not available. (Anti-cheat indicator inactive)");
+      }
+    }
+    requestCamera();
   }, [router]);
 
   async function handleSubmit(e: FormEvent) {

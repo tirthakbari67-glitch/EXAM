@@ -185,6 +185,8 @@ def submit_exam(
             submitted=True,
             score=score,
             total_marks=total,
+            correct_count=r.get("correct_count", 0),  # These would need to be in DB too if we want persistence
+            wrong_count=r.get("wrong_count", 0),
             percentage=round(score / total * 100, 1) if total else 0,
             submitted_at=r.get("submitted_at", datetime.now(timezone.utc).isoformat()),
         )
@@ -206,9 +208,10 @@ def submit_exam(
         for q in (questions_result.data or [])
     }
 
-    # 3. Calculate score
     answers = request.answers
     score = 0
+    correct_count = 0
+    wrong_count = 0
     total_marks = sum(m for _, m in correct_map.values())
 
     for q_id, selected in answers.items():
@@ -216,6 +219,9 @@ def submit_exam(
             correct_ans, marks = correct_map[q_id]
             if selected == correct_ans:
                 score += marks
+                correct_count += 1
+            else:
+                wrong_count += 1
 
     submitted_at = datetime.now(timezone.utc).isoformat()
 
@@ -249,6 +255,8 @@ def submit_exam(
         submitted=True,
         score=score,
         total_marks=total_marks,
+        correct_count=correct_count,
+        wrong_count=wrong_count,
         percentage=round(score / total_marks * 100, 1) if total_marks else 0,
         submitted_at=submitted_at,
     )

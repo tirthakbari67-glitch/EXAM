@@ -104,6 +104,8 @@ export interface SubmitResponse {
   submitted: boolean;
   score: number;
   total_marks: number;
+  correct_count: number;
+  wrong_count: number;
   percentage: number;
   submitted_at: string;
 }
