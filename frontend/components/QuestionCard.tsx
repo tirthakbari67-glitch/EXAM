@@ -1,13 +1,16 @@
 "use client";
 
 import styles from "./QuestionCard.module.css";
+import { ReactNode } from "react";
 
 interface QuestionCardProps {
   question: { id: string; text: string; options: string[]; marks: number };
   questionNumber: number;
+  totalQuestions: number;
   selectedAnswer: string | undefined;
   onSelect: (questionId: string, option: string) => void;
   isSubmitted: boolean;
+  children?: ReactNode;
 }
 
 const OPTION_KEYS = ["A", "B", "C", "D"];
@@ -15,16 +18,21 @@ const OPTION_KEYS = ["A", "B", "C", "D"];
 export default function QuestionCard({
   question,
   questionNumber,
+  totalQuestions,
   selectedAnswer,
   onSelect,
   isSubmitted,
+  children,
 }: QuestionCardProps) {
   return (
     <div className={styles.card} id={`question-${questionNumber}`}>
       {/* Question header */}
       <div className={styles.header}>
-        <span className={styles.number}>Q{questionNumber}</span>
-        <span className={styles.marks}>{question.marks} mark{question.marks !== 1 ? "s" : ""}</span>
+        <span className={styles.numberText}>Question {questionNumber} of {totalQuestions}</span>
+        {/* We can put the marks over to the right or omit it if not needed, but let's keep it aligned right */}
+        {question.marks > 0 && (
+          <span className={styles.marks}>{question.marks} mark{question.marks !== 1 ? "s" : ""}</span>
+        )}
       </div>
 
       {/* Question text */}
@@ -46,18 +54,33 @@ export default function QuestionCard({
               className={`${styles.option} ${isSelected ? styles.selected : ""}`}
               aria-pressed={isSelected}
             >
-              <span className={styles.optionKey}>{key}</span>
-              <span className={styles.optionText}>{option.replace(/^[A-D]\)\s*/, "")}</span>
-              {isSelected && (
-                <svg className={styles.check} width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="7" fill="var(--accent)" />
-                  <path d="M5 8l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
+              {/* Custom SVG radio */}
+              <div className={styles.radioWrapper}>
+                {isSelected ? (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className={styles.radioSelected}>
+                    <circle cx="12" cy="12" r="10" fill="currentColor" stroke="currentColor" strokeWidth="2" />
+                    <path d="M8 12.5L10.5 15L16 9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className={styles.radioUnselected}>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                )}
+              </div>
+              <span className={styles.optionText}>
+                {key}. {option.replace(/^[A-D]\)\s*/, "")}
+              </span>
             </button>
           );
         })}
       </div>
+
+      {/* Action Buttons Container (Next/Previous/Flag) */}
+      {children && (
+        <div className={styles.actionsContainer}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }

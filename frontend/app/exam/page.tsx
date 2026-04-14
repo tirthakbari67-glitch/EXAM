@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { fetchQuestions, submitExam, fetchPublicExamConfig, type Question } from "@/lib/api";
 import { useExamState, clearExamStorage } from "@/hooks/useExamState";
@@ -18,6 +18,8 @@ interface StudentInfo {
   examDurationMinutes: number;
 }
 
+const FINAL_THEMES = ["glass-aura", "glass-galaxy", "glass-ocean"];
+
 export default function ExamPage() {
   const router = useRouter();
   const { enter: enterFullscreen } = useFullscreen();
@@ -34,8 +36,15 @@ export default function ExamPage() {
   const [submitting, setSubmitting] = useState(false);
   const [examInactive, setExamInactive] = useState(false);
   const [examScheduled, setExamScheduled] = useState<string | null>(null);
-  const [examTitle, setExamTitle] = useState("ExamGuard Assessment");
+  const [examTitle, setExamTitle] = useState("Exam Assessment");
   const [saveIndicator, setSaveIndicator] = useState<"idle" | "saving" | "saved">("idle");
+
+  // Pagination state
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [flagged, setFlagged] = useState<Set<number>>(new Set());
+
+  // Randomized final theme for this student's session
+  const [finalTheme, setFinalTheme] = useState("glass-aura");
 
   const { answers, dirtyIds, selectAnswer, clearDirty, getAnsweredCount } = useExamState();
   const saveIndicatorTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -59,12 +68,14 @@ export default function ExamPage() {
 
     const info: StudentInfo = JSON.parse(raw);
     setStudent(info);
+    
+    // Pick random final theme on mount
+    setFinalTheme(FINAL_THEMES[Math.floor(Math.random() * FINAL_THEMES.length)]);
 
     fetchQuestions()
       .then((qs) => {
         setQuestions(qs);
         setLoading(false);
-        // Enter fullscreen on load
         enterFullscreen();
       })
       .catch(() => {
@@ -78,7 +89,7 @@ export default function ExamPage() {
     const checkConfig = async () => {
       try {
         const cfg = await fetchPublicExamConfig();
-        setExamTitle(cfg.exam_title || "ExamGuard Assessment");
+        setExamTitle(cfg.exam_title || "Exam Assessment");
         if (!cfg.is_active) {
           setExamInactive(true);
           setExamScheduled(null);
@@ -118,6 +129,13 @@ export default function ExamPage() {
     [selectAnswer]
   );
 
+  const toggleFlag = () => {
+    const newFlags = new Set(flagged);
+    if (newFlags.has(activeQuestionIndex)) newFlags.delete(activeQuestionIndex);
+    else newFlags.add(activeQuestionIndex);
+    setFlagged(newFlags);
+  };
+
   // ── Submit handler ────────────────────────────────────────
   const handleSubmit = useCallback(
     async (auto = false) => {
@@ -151,6 +169,21 @@ export default function ExamPage() {
   const handleAutoSubmit = useCallback(() => {
     handleSubmit(true);
   }, [handleSubmit]);
+
+  // ── Derived State (must be before early returns) ──────────
+  const answeredCount = getAnsweredCount(questions.length);
+  const progressPercentage = questions.length > 0 ? (activeQuestionIndex + 1) / questions.length : 0;
+
+  // Calculate dynamic theme based on chunks of 20%
+  const activeTheme = useMemo(() => {
+    if (progressPercentage < 0.2) return "phase-1";
+    if (progressPercentage < 0.4) return "ocean";
+    if (progressPercentage < 0.6) return "galaxy";
+    if (progressPercentage < 0.8) return "nebula";
+    return finalTheme;
+  }, [progressPercentage, finalTheme]);
+
+  const activeQuestion = questions[activeQuestionIndex];
 
   // ── Loading state ─────────────────────────────────────────
   if (loading) {
@@ -239,10 +272,8 @@ export default function ExamPage() {
     );
   }
 
-  const answeredCount = getAnsweredCount(questions.length);
-
   return (
-    <div className={`${styles.wrapper} no-select`}>
+    <div className={`${styles.wrapper} no-select`} data-theme={activeTheme}>
       {/* ── Weightless Exam Overlay (inactive / scheduled) ── */}
       {(examInactive || examScheduled) && (
         <div style={{
@@ -281,122 +312,251 @@ export default function ExamPage() {
               : `Your exam is scheduled to begin at ${examScheduled ? new Date(examScheduled).toLocaleString() : "—"}. Please stand by.`
             }
           </p>
-          <div style={{
-            marginTop: 12,
-            padding: "10px 20px",
-            borderRadius: 999,
-            border: "1px solid rgba(139,92,246,0.3)",
-            background: "rgba(139,92,246,0.08)",
-            color: "#a78bfa",
-            fontSize: 13,
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: examInactive ? "#f87171" : "#fbbf24", display: "inline-block", animation: "pulse 1.5s ease infinite" }} />
-            {examInactive ? "Deactivated" : "Scheduled"}
-          </div>
         </div>
       )}
 
       {/* Anti-cheat: all proctoring attached here */}
       <AntiCheat isSubmitted={isSubmitted} onAutoSubmit={handleAutoSubmit} />
 
-      {/* ── Header ─────────────────────────────────────────── */}
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <div className={styles.brand}>
-            <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="#4f6ef7"/>
-              <path d="M8 12h16M8 16h10M8 20h12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="24" cy="20" r="4" fill="#22c55e" stroke="white" strokeWidth="1.5"/>
-            </svg>
-            <span className={styles.brandName}>ExamGuard</span>
-          </div>
-          <span className={styles.studentName}>{student?.name}</span>
-        </div>
-
-        <div className={styles.headerCenter}>
-          <span className={styles.progress}>
-            {answeredCount}/{questions.length} answered
-          </span>
-          <div className={styles.progressBar}>
-            <div
-              className={styles.progressFill}
-              style={{ width: `${questions.length ? (answeredCount / questions.length) * 100 : 0}%` }}
-            />
-          </div>
-        </div>
-
-        <div className={styles.headerRight}>
-          {saveIndicator === "saving" && (
-            <span className={styles.saveStatus}>
-              <span className="spinner" style={{width:12,height:12}} /> Saving...
+      {/* ── Welcome Banner (always visible, matching mockup) ── */}
+      <div style={{ padding: "16px 28px 0", zIndex: 2, position: "relative" }}>
+        <div style={{
+          background: "rgba(255, 255, 255, 0.65)",
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(40px)",
+          padding: "16px 28px",
+          borderRadius: "20px",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          border: "1px solid rgba(255,255,255,0.7)",
+        }}>
+          <h2 style={{ fontSize: "16px", margin: 0, fontWeight: 700, color: "#1e293b" }}>
+            Welcome, {student?.name || "Student"}!{" "}
+            <span style={{ fontWeight: 400, opacity: 0.7, color: "#475569" }}>
+              Deep breaths and stay focused. You&apos;ve got this.
             </span>
-          )}
-          {saveIndicator === "saved" && (
-            <span className={styles.saveStatus} style={{color:"var(--success)"}}>✓ Saved</span>
-          )}
-          {student && (
-            <ExamTimer
-              startTime={student.examStartTime || new Date().toISOString()}
-              durationMinutes={student.examDurationMinutes}
-              onExpire={handleAutoSubmit}
-            />
-          )}
-          <button
-            id="submit-exam-btn"
-            className="btn btn-danger"
-            onClick={() => setConfirmSubmit(true)}
-            disabled={submitting}
-          >
-            {submitting ? <><span className="spinner"/>Submitting...</> : "Submit Exam"}
-          </button>
+          </h2>
+          {/* Avatar circle */}
+          <div style={{
+            width: 42, height: 42, borderRadius: "50%",
+            background: "linear-gradient(135deg, #0d9488, #5eead4)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", fontWeight: 700, fontSize: "16px",
+            boxShadow: "0 4px 12px rgba(13,148,136,0.3)",
+            flexShrink: 0
+          }}>
+            {(student?.name || "S").charAt(0).toUpperCase()}
+          </div>
         </div>
-      </header>
+      </div>
 
-      {/* ── Question list ───────────────────────────────────── */}
+      {/* ── Main layout ───────────────────────────────────── */}
       <main className={styles.main}>
-        <div className={styles.questionList}>
-          {questions.map((q, i) => (
-            <QuestionCard
-              key={q.id}
-              question={q}
-              questionNumber={i + 1}
-              selectedAnswer={answers[q.id]}
-              onSelect={handleSelect}
-              isSubmitted={isSubmitted}
-            />
-          ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, overflow: "hidden" }}>
+          {/* Exam Title & Timer Row */}
+          <div style={{
+             display: "flex",
+             alignItems: "center",
+             justifyContent: "space-between",
+             background: "rgba(255, 255, 255, 0.65)",
+             backdropFilter: "blur(40px)",
+             WebkitBackdropFilter: "blur(40px)",
+             padding: "16px 28px",
+             borderRadius: "20px",
+             boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
+             border: "1px solid rgba(255,255,255,0.7)",
+          }}>
+             <h1 style={{ margin: 0, fontSize: "20px", color: "#1e293b", fontWeight: 700 }}>
+               {examTitle}
+             </h1>
+             {student && (
+               <ExamTimer
+                 startTime={student.examStartTime || new Date().toISOString()}
+                 durationMinutes={student.examDurationMinutes}
+                 onExpire={handleAutoSubmit}
+               />
+             )}
+          </div>
+
+          <div className={styles.questionList}>
+            {activeQuestion && (
+              <QuestionCard
+                key={activeQuestion.id}
+                question={activeQuestion}
+                questionNumber={activeQuestionIndex + 1}
+                totalQuestions={questions.length}
+                selectedAnswer={answers[activeQuestion.id]}
+                onSelect={handleSelect}
+                isSubmitted={isSubmitted}
+              >
+                {/* Previous */}
+                <button
+                  type="button"
+                  style={{
+                    background: "rgba(13, 148, 136, 0.08)",
+                    border: "1.5px solid rgba(13, 148, 136, 0.3)",
+                    color: "#0d9488",
+                    padding: "12px 24px",
+                    borderRadius: "12px",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    opacity: activeQuestionIndex === 0 ? 0.3 : 1,
+                    pointerEvents: activeQuestionIndex === 0 ? "none" : "auto",
+                    transition: "all 0.2s ease",
+                  }}
+                  onClick={() => setActiveQuestionIndex((prev) => Math.max(0, prev - 1))}
+                >
+                  Previous
+                </button>
+
+                {/* Mark for Review */}
+                <button
+                  type="button"
+                  style={{
+                    background: flagged.has(activeQuestionIndex) ? "rgba(234,179,8,0.08)" : "transparent",
+                    border: flagged.has(activeQuestionIndex) ? "1.5px solid #eab308" : "1.5px solid rgba(0,0,0,0.1)",
+                    color: flagged.has(activeQuestionIndex) ? "#ca8a04" : "#475569",
+                    padding: "12px 24px",
+                    borderRadius: "12px",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                  onClick={toggleFlag}
+                >
+                  {flagged.has(activeQuestionIndex) ? "🚩 Marked" : "Mark for Review"}
+                </button>
+
+                {/* Save & Next / Submit */}
+                {activeQuestionIndex < questions.length - 1 ? (
+                  <button
+                    type="button"
+                    style={{
+                      background: "#0d9488",
+                      color: "#fff",
+                      border: "none",
+                      padding: "12px 28px",
+                      borderRadius: "12px",
+                      fontWeight: 700,
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(13,148,136,0.3)",
+                      transition: "all 0.3s ease",
+                    }}
+                    onClick={() => setActiveQuestionIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+                  >
+                    Save &amp; Next
+                  </button>
+                ) : (
+                  <button
+                    id="submit-exam-btn"
+                    type="button"
+                    style={{
+                      background: "#ef4444",
+                      color: "#fff",
+                      border: "none",
+                      padding: "12px 28px",
+                      borderRadius: "12px",
+                      fontWeight: 700,
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(239,68,68,0.3)",
+                    }}
+                    onClick={() => setConfirmSubmit(true)}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Submitting..." : "Submit Exam"}
+                  </button>
+                )}
+              </QuestionCard>
+            )}
+          </div>
         </div>
 
-        {/* Sidebar nav */}
+        {/* ── Sidebar ── */}
         <aside className={styles.sidebar}>
+          {/* Progress Card */}
           <div className={styles.sideCard}>
-            <h3 className={styles.sideTitle}>Questions</h3>
+            <h3 className={styles.sideTitle}>Progress</h3>
             <div className={styles.navGrid}>
-              {questions.map((q, i) => (
-                <a
-                  key={q.id}
-                  href={`#question-${i + 1}`}
-                  className={`${styles.navBtn} ${answers[q.id] ? styles.navAnswered : ""}`}
-                  aria-label={`Question ${i + 1}`}
-                >
-                  {i + 1}
-                </a>
-              ))}
+              {questions.map((q, i) => {
+                const isAnswered = !!answers[q.id];
+                const isActive = i === activeQuestionIndex;
+                const isFlagged = flagged.has(i);
+
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => setActiveQuestionIndex(i)}
+                    className={`${styles.navBtn} ${isAnswered ? styles.navAnswered : ""} ${isActive ? styles.navActive : ""} ${isFlagged ? styles.navFlagged : ""}`}
+                    aria-label={`Question ${i + 1}`}
+                  >
+                    {isAnswered ? (
+                      <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    ) : (
+                      i + 1
+                    )}
+                    {isFlagged && (
+                       <span style={{ position: "absolute", top: -3, right: -3, width: 10, height: 10, background: "#eab308", borderRadius: "50%", border: "2px solid #fff", boxShadow: "0 0 6px rgba(234,179,8,0.6)" }} />
+                    )}
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Legend */}
             <div className={styles.legend}>
-              <span className={styles.legendItem}>
-                <span className={`${styles.navBtn} ${styles.navAnswered}`} style={{display:"inline-block",width:20,height:20,fontSize:10}}>✓</span>
-                Answered
-              </span>
-              <span className={styles.legendItem}>
-                <span className={styles.navBtn} style={{display:"inline-block",width:20,height:20,fontSize:10}}>·</span>
-                Unanswered
-              </span>
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: "#0d9488" }} />
+                <span>Current</span>
+              </div>
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: "#0d9488", opacity: 0.4 }} />
+                <span>Answered</span>
+              </div>
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: "#eab308" }} />
+                <span>Flagged</span>
+              </div>
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: "rgba(0,0,0,0.08)" }} />
+                <span>Not Visited</span>
+              </div>
             </div>
+          </div>
+
+          {/* Moon / Cloud Decorative Card (matching mockup) */}
+          <div style={{
+            background: "rgba(255, 255, 255, 0.55)",
+            backdropFilter: "blur(40px)",
+            WebkitBackdropFilter: "blur(40px)",
+            borderRadius: "20px",
+            border: "1px solid rgba(255,255,255,0.7)",
+            padding: "24px",
+            display: "grid",
+            placeItems: "center",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
+            position: "relative",
+            overflow: "hidden",
+            flexShrink: 0,
+          }}>
+             {/* Moon */}
+             <div style={{
+               width: 60, height: 60, borderRadius: "50%",
+               background: "radial-gradient(circle at 30% 30%, #f0fdfa, #ccfbf1)",
+               boxShadow: "0 0 30px rgba(13,148,136,0.2)",
+               marginBottom: 12,
+             }} />
+             {/* Clouds */}
+             <div style={{ position: "absolute", bottom: -5, left: "-5%", opacity: 0.15, filter: "blur(8px)", fontSize: "36px" }}>☁️</div>
+             <div style={{ position: "absolute", bottom: 15, right: "8%", opacity: 0.2, filter: "blur(4px)", fontSize: "18px" }}>☁️</div>
+             {/* Sparkle stars */}
+             <div style={{ position: "absolute", top: 14, right: 20, fontSize: "14px", opacity: 0.5 }}>✦</div>
+             <div style={{ position: "absolute", top: 30, right: 35, fontSize: "10px", opacity: 0.3 }}>✦</div>
           </div>
         </aside>
       </main>
@@ -405,8 +565,8 @@ export default function ExamPage() {
       {confirmSubmit && (
         <div className={styles.confirmOverlay}>
           <div className={styles.confirmModal}>
-            <h2>Submit Exam?</h2>
-            <p>
+            <h2 style={{color: "var(--text-primary)"}}>Submit Exam?</h2>
+            <p style={{color: "var(--text-secondary)"}}>
               You have answered <strong style={{color:"var(--accent)"}}>{answeredCount}</strong> out of{" "}
               <strong>{questions.length}</strong> questions.
             </p>
@@ -415,9 +575,9 @@ export default function ExamPage() {
                 ⚠️ {questions.length - answeredCount} question(s) still unanswered.
               </p>
             )}
-            <p>This action cannot be undone.</p>
+            <p style={{color: "var(--text-secondary)"}}>This action cannot be undone.</p>
             <div className={styles.confirmActions}>
-              <button className="btn btn-outline" onClick={() => setConfirmSubmit(false)}>
+              <button className="btn" style={{ background: "rgba(255,255,255,0.1)", color: "var(--text-primary)" }} onClick={() => setConfirmSubmit(false)}>
                 Cancel — Keep Exam
               </button>
               <button
