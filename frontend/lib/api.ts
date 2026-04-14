@@ -325,6 +325,43 @@ export async function fetchPublicExamConfig(): Promise<ExamConfig> {
   return res.json();
 }
 
+/**
+ * Fetch question counts grouped by branch for the student dashboard.
+ * Returns a summary of available exam nodes.
+ */
+export interface BranchExamSummary {
+  branch: string;
+  exam_name: string;
+  question_count: number;
+}
+
+export async function fetchBranchExamSummary(): Promise<BranchExamSummary[]> {
+  try {
+    // Use the public questions endpoint — reading branch distribution
+    const res = await fetch(`${API_BASE}/exam/questions`, {
+      headers: {
+        Authorization: `Bearer ${typeof window !== "undefined" ? sessionStorage.getItem("exam_token") || "" : ""}`,
+      },
+    });
+    if (!res.ok) return [];
+    const data: { questions: Array<{ branch: string; exam_name?: string }> } = await res.json();
+    const branchMap: Record<string, { count: number; exam_name: string }> = {};
+    for (const q of data.questions) {
+      const br = q.branch || "CS";
+      if (!branchMap[br]) branchMap[br] = { count: 0, exam_name: q.exam_name || "ExamGuard Assessment" };
+      branchMap[br].count++;
+    }
+    return Object.entries(branchMap).map(([branch, info]) => ({
+      branch,
+      exam_name: info.exam_name,
+      question_count: info.count,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+
 // ── Leaderboard ───────────────────────────────────────────────
 export interface LeaderboardEntry {
   rank: number;

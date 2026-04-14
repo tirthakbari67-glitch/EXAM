@@ -9,7 +9,7 @@ export default function Home() {
   useEffect(() => {
     const token = sessionStorage.getItem("exam_token");
     if (token) {
-      router.replace("/exam");
+      router.replace("/dashboard");
     } else {
       router.replace("/login");
     }

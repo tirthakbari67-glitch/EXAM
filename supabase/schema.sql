@@ -147,3 +147,27 @@ CREATE POLICY "Students read own results"
 
 ALTER PUBLICATION supabase_realtime ADD TABLE exam_status;
 ALTER PUBLICATION supabase_realtime ADD TABLE violations;
+
+-- ============================================================
+-- REALTIME: Student Dashboard — Exam Discovery Sync
+-- ============================================================
+-- Also enable realtime for exam_config + questions so the
+-- student dashboard instantly reflects admin changes.
+-- Run these in Supabase Dashboard → Database → Replication
+-- OR run the ALTER PUBLICATION commands below:
+
+ALTER PUBLICATION supabase_realtime ADD TABLE exam_config;
+ALTER PUBLICATION supabase_realtime ADD TABLE questions;
+
+-- ============================================================
+-- TABLE: exam_config (if not already created)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS exam_config (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  is_active        BOOLEAN DEFAULT TRUE,
+  scheduled_start  TIMESTAMPTZ,
+  duration_minutes INTEGER DEFAULT 60,
+  exam_title       TEXT DEFAULT 'ExamGuard Assessment',
+  updated_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
