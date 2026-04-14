@@ -114,8 +114,14 @@ async def login(request: LoginRequest):
     student_id_val = student.get("usn") or student.get("roll_number") or ""
     # Use branch from request if provided, else fallback to DB value or "CS"
     current_branch = request.branch or student.get("branch", "CS")
+    current_name = request.name or student.get("name", "Student")
     token = create_access_token(
-        data={"sub": student["id"], "usn": student_id_val, "branch": current_branch}
+        data={
+            "sub": student["id"], 
+            "usn": student_id_val, 
+            "name": current_name,
+            "branch": current_branch
+        }
     )
 
     # 6. Mark session active + record token (safe update for legacy schemas)

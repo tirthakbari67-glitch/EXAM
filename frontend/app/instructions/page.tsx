@@ -55,7 +55,7 @@ export default function InstructionsPage() {
         <div className={styles.headerRight}>
           <div className={styles.studentInfo}>
             <span className={styles.studentName}>{studentInfo.name}</span>
-            <span className={styles.studentRole}>Candidate</span>
+            <span className={styles.studentRole}>{studentInfo.usn}</span>
           </div>
           <button onClick={handleLogout} className={styles.logoutBtn} title="Logout">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -76,6 +76,13 @@ export default function InstructionsPage() {
           <div className={styles.detailsBox}>
             <h2 className={styles.detailsTitle}>Exam Details</h2>
             <div className={styles.detailsGrid}>
+              <div className={styles.detailItem}>
+                <svg className={styles.detailIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                Candidate Name: {studentInfo.name}
+              </div>
               <div className={styles.detailItem}>
                 <svg className={styles.detailIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"></circle>
