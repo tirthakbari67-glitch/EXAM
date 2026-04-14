@@ -231,42 +231,49 @@ export default function ExamPage() {
     );
   }
 
-  // ── Results screen ────────────────────────────────────────
+  // ── Results screen (Capsule Mockup) ──────────────────────
   if (isSubmitted && submitResult) {
-    const pct = submitResult.percentage;
-    const grade = pct >= 80 ? "Excellent" : pct >= 60 ? "Good" : pct >= 40 ? "Average" : "Below Average";
-    const gradeColor = pct >= 80 ? "var(--success)" : pct >= 60 ? "var(--accent)" : pct >= 40 ? "var(--warning)" : "var(--danger)";
-
     return (
-      <div className="page-center">
-        <div className={styles.resultCard}>
-          <div className={styles.resultIcon}>✅</div>
-          <h1 className={styles.resultTitle}>Exam Submitted</h1>
-          <p className={styles.resultSub}>Your answers have been recorded successfully.</p>
+      <div className={styles.submittedWrapper}>
+        {/* Decorative Nebula Orbs */}
+        <div style={{ position: "fixed", top: "10%", left: "15%", width: 400, height: 400, background: "radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
+        <div style={{ position: "fixed", bottom: "10%", right: "15%", width: 400, height: 400, background: "radial-gradient(circle, rgba(13,148,136,0.15) 0%, transparent 70%)", borderRadius: "50%", pointerEvents: "none" }} />
 
-          <div className={styles.scoreRing} style={{ "--pct": `${pct}%`, "--color": gradeColor } as React.CSSProperties}>
-            <div className={styles.scoreInner}>
-              <span className={styles.scoreNum} style={{ color: gradeColor }}>{submitResult.score}</span>
-              <span className={styles.scoreTotal}>/ {submitResult.total}</span>
-            </div>
+        <div className={styles.successCapsule}>
+          {/* Hourglass Background Graphic */}
+          <div className={styles.hourglassBg}>
+            <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+              <path d="M5 2h14" />
+              <path d="M5 22h14" />
+              <path d="M19 2a33 33 0 0 1-14 0" />
+              <path d="M19 22a33 33 0 0 0-14 0" />
+              <path d="M15 2v1c0 5-6 5-6 10s6 5 6 10v1" />
+              <path d="M9 2v1c0 5 6 5 6 10s-6 5-6 10v1" />
+            </svg>
           </div>
 
-          <div className={styles.resultStats}>
-            <div className={styles.stat}>
-              <span className={styles.statLabel}>Percentage</span>
-              <span className={styles.statValue} style={{ color: gradeColor }}>{pct}%</span>
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <h1 className={styles.thankYouTitle}>THANK YOU!</h1>
+            
+            <div className={styles.subStatus}>
+              Exam Submitted <span style={{ background: "#22c55e", borderRadius: "4px", padding: "2px 6px", fontSize: "16px", marginLeft: "4px" }}>✓</span>
             </div>
-            <div className={styles.stat}>
-              <span className={styles.statLabel}>Grade</span>
-              <span className={styles.statValue} style={{ color: gradeColor }}>{grade}</span>
+
+            <div className={styles.answeredCount}>
+              answered {getAnsweredCount(questions.length)}/{questions.length}
             </div>
-            <div className={styles.stat}>
-              <span className={styles.statLabel}>Answered</span>
-              <span className={styles.statValue}>{getAnsweredCount(questions.length)}/{questions.length}</span>
+
+            <div className={styles.resultTimer}>
+              You will get your result in 3:00 minutes
             </div>
           </div>
+        </div>
 
-          <p className={styles.resultFooter}>You may close this window now.</p>
+        {/* Floating Sparkles */}
+        <div style={{ position: "fixed", bottom: 40, right: 40, opacity: 0.4 }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" fill="white" />
+          </svg>
         </div>
       </div>
     );
