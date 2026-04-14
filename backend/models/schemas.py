@@ -19,8 +19,13 @@ class LoginResponse(BaseModel):
     student_name: str
     email: Optional[str] = None
     branch: str = "CS"
-    exam_start_time: Optional[str]     # ISO timestamp (when this student started)
+    exam_start_time: Optional[str] = None     # ISO timestamp (when this student started)
     exam_duration_minutes: int
+
+
+class StartExamResponse(BaseModel):
+    started_at: str
+    status: str
 
 
 # ── Questions ─────────────────────────────────────────────────

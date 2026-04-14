@@ -5,6 +5,7 @@ from models.schemas import (
     QuestionsResponse, QuestionOut,
     SaveAnswerRequest, SaveAnswerResponse,
     SubmitExamRequest, SubmitExamResponse,
+    StartExamResponse
 )
 from core.security import get_current_student
 from db.supabase_client import get_supabase
@@ -251,3 +252,36 @@ def submit_exam(
         percentage=round(score / total_marks * 100, 1) if total_marks else 0,
         submitted_at=submitted_at,
     )
+
+
+@router.post("/start-exam", response_model=StartExamResponse)
+async def start_exam(current: dict = Depends(get_current_student)):
+    """
+    Officially starts the exam timer for the student.
+    Sets status to 'active' and records 'started_at'.
+    Returns the start time so the frontend can sync.
+    """
+    _check_exam_active()
+    db = get_supabase()
+    student_id = current["student_id"]
+
+    # 1. Check if already started or submitted
+    status_res = db.table("exam_status").select("status, started_at").eq("student_id", student_id).single().execute()
+    data = status_res.data or {}
+    
+    if data.get("status") == "submitted":
+        raise HTTPException(status_code=403, detail="Exam already submitted.")
+
+    # 2. If already active, just return the existing start time
+    if data.get("status") == "active" and data.get("started_at"):
+        return StartExamResponse(started_at=data["started_at"], status="active")
+
+    # 3. Otherwise, set the start time NOW
+    started_at = datetime.now(timezone.utc).isoformat()
+    db.table("exam_status").update({
+        "status": "active",
+        "started_at": started_at,
+        "last_active": started_at
+    }).eq("student_id", student_id).execute()
+
+    return StartExamResponse(started_at=started_at, status="active")

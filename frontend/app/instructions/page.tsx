@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./instructions.module.css";
+import { startExam } from "@/lib/api";
 
 export default function InstructionsPage() {
   const router = useRouter();
   const [studentInfo, setStudentInfo] = useState<{name: string, usn: string} | null>(null);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     // Check authentication
@@ -33,8 +35,26 @@ export default function InstructionsPage() {
     }
   }, [router]);
 
-  const handleStartExam = () => {
-    router.push("/exam");
+  const handleStartExam = async () => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      const res = await startExam();
+      
+      // Update session storage with the real start time
+      const studentData = sessionStorage.getItem("exam_student");
+      if (studentData) {
+        const parsed = JSON.parse(studentData);
+        parsed.examStartTime = res.started_at;
+        sessionStorage.setItem("exam_student", JSON.stringify(parsed));
+      }
+
+      router.push("/exam");
+    } catch (err) {
+      console.error("Failed to start exam", err);
+      alert("Error starting exam. Please try again.");
+      setStarting(false);
+    }
   };
 
   const handleLogout = () => {
@@ -136,12 +156,25 @@ export default function InstructionsPage() {
           </ul>
 
           <div className={styles.actionArea}>
-            <button onClick={handleStartExam} className={styles.startBtn}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-              Start Exam
+            <button 
+              onClick={handleStartExam} 
+              className={styles.startBtn}
+              disabled={starting}
+            >
+              {starting ? (
+                <>
+                  <div className={styles.spinner}></div>
+                  Initializing...
+                </>
+              ) : (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                  Start Exam
+                </>
+              )}
             </button>
           </div>
         </div>

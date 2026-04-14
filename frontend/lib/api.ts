@@ -117,6 +117,12 @@ export async function submitExam(
   });
 }
 
+export async function startExam(): Promise<{ started_at: string }> {
+  return apiFetch<{ started_at: string }>("/exam/start-exam", {
+    method: "POST",
+  });
+}
+
 // ── Violations ────────────────────────────────────────────────
 export interface ViolationResponse {
   warning_count: number;

@@ -137,21 +137,16 @@ async def login(request: LoginRequest):
         # If columns missing, just skip (log for debug)
         print(f"[AUTH] Optional student update failed: {e}")
 
-    # 7. Update exam_status: set active + record start time (only if first login)
+    # 7. Ensure exam_status row exists, but DO NOT start it here unless already active.
     started_at = None
     if exam_status_data:
-        if exam_status_data.get("status") == "not_started":
-            started_at = datetime.now(timezone.utc).isoformat()
-            db.table("exam_status").update(
-                {"status": "active", "started_at": started_at, "last_active": started_at}
-            ).eq("student_id", student["id"]).execute()
-        else:
+        # If already active, return the existing start time
+        if exam_status_data.get("status") == "active":
             started_at = exam_status_data.get("started_at")
     else:
-        # Create exam_status row if missing (safety)
-        started_at = datetime.now(timezone.utc).isoformat()
+        # Create exam_status row for fresh student
         db.table("exam_status").insert(
-            {"student_id": student["id"], "status": "active", "started_at": started_at}
+            {"student_id": student["id"], "status": "not_started"}
         ).execute()
 
     return LoginResponse(
