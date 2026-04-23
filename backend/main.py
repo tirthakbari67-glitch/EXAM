@@ -55,36 +55,40 @@ app.include_router(ingest.router)
 app.include_router(leaderboard.router)
 
 
-# ── Temporal Horizon Evictor ──────────────────────────────────
-async def temporal_evictor_loop():
-    while True:
-        try:
-            db = get_supabase()
-            # Select all active exams that have a scheduled end time
-            result = db.table("exam_config").select("id, is_active, scheduled_end, exam_title").eq("is_active", True).not_.is_("scheduled_end", "null").execute()
-            
-            for config in (result.data or []):
-                end_time_str = config["scheduled_end"]
-                # Handle "Z" and "+00:00" mapping
-                if end_time_str.endswith("Z"):
-                    end_time_str = end_time_str[:-1] + "+00:00"
-                
-                try:
-                    end_time = datetime.fromisoformat(end_time_str)
-                    if datetime.now(timezone.utc) >= end_time:
-                        # Auto evaporate the exam
-                        db.table("exam_config").update({"is_active": False}).eq("id", config["id"]).execute()
-                        logger.info(f"Temporal Horizon reached for exam '{config.get('exam_title')}'. Exam is now deactivated.")
-                except Exception as ex:
-                    logger.error(f"Error parsing date for exam {config.get('id')}: {ex}")
-        except Exception as e:
-            logger.error(f"Error in temporal evictor loop: {e}")
+# ── Cron Endpoint (For Vercel) ─────────────────────────────────
+@app.get("/api/cron/evict", tags=["cron"])
+async def cron_evict():
+    """
+    Manually trigger the deactivation of exams that have reached their temporal horizon.
+    This replaces the background loop for serverless environments.
+    """
+    try:
+        db = get_supabase()
+        # Select all active exams that have a scheduled end time
+        result = db.table("exam_config").select("id, is_active, scheduled_end, exam_title").eq("is_active", True).not_.is_("scheduled_end", "null").execute()
         
-        await asyncio.sleep(15)
+        deactivated_count = 0
+        for config in (result.data or []):
+            end_time_str = config["scheduled_end"]
+            # Handle "Z" and "+00:00" mapping
+            if end_time_str.endswith("Z"):
+                end_time_str = end_time_str[:-1] + "+00:00"
+            
+            try:
+                end_time = datetime.fromisoformat(end_time_str)
+                if datetime.now(timezone.utc) >= end_time:
+                    # Auto evaporate the exam
+                    db.table("exam_config").update({"is_active": False}).eq("id", config["id"]).execute()
+                    logger.info(f"Temporal Horizon reached for exam '{config.get('exam_title')}'. Exam is now deactivated.")
+                    deactivated_count += 1
+            except Exception as ex:
+                logger.error(f"Error parsing date for exam {config.get('id')}: {ex}")
+        
+        return {"status": "success", "deactivated": deactivated_count}
+    except Exception as e:
+        logger.error(f"Error in cron evict: {e}")
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(temporal_evictor_loop())
 
 
 # ── Health Check ──────────────────────────────────────────────

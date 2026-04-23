@@ -248,6 +248,98 @@ async def reset_student_exam(student_id: str, _: bool = Depends(verify_admin)):
 
     return {"reset": True}
 
+@router.post("/students/cleanup-stale")
+async def cleanup_stale_sessions(_: bool = Depends(verify_admin)):
+    """Bulk move sessions idle for > 4h to 'submitted' (force-submit) or reset them."""
+    # For now, we'll reset them to prevent infinite 'Active' state
+    from datetime import timedelta
+    db = get_supabase()
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat()
+    
+    # 1. Find stale IDs
+    stale_res = db.table("exam_status").select("student_id").eq("status", "active").lt("last_active", cutoff).execute()
+    stale_ids = [r["student_id"] for r in (stale_res.data or [])]
+    
+    if not stale_ids:
+        return {"count": 0}
+
+    # 2. Reset status
+    db.table("exam_status").update({
+        "status": "not_started",
+        "started_at": None,
+        "last_active": None,
+        "warnings": 0
+    }).in_("student_id", stale_ids).execute()
+
+    # 3. Clear results to keep it clean
+    db.table("exam_results").delete().in_("student_id", stale_ids).execute()
+
+    # 4. Clear active sessions
+    db.table("students").update({
+        "is_active_session": False,
+        "current_token": None
+    }).in_("id", stale_ids).execute()
+
+    return {"count": len(stale_ids)}
+
+@router.post("/students/{student_id}/force-submit")
+async def force_submit_student(student_id: str, _: bool = Depends(verify_admin)):
+    """Admin tool to force submission of a student session using current saved answers."""
+    db = get_supabase()
+    
+    # 1. Fetch student for context (branch)
+    student_res = db.table("students").select("branch").eq("id", student_id).single().execute()
+    if not student_res.data:
+        raise HTTPException(status_code=404, detail="Student not found")
+    branch = student_res.data["branch"]
+
+    # 2. Get saved answers
+    results_res = db.table("exam_results").select("answers").eq("student_id", student_id).single().execute()
+    answers = results_res.data.get("answers") or {} if results_res.data else {}
+    
+    # 3. Calculate Score
+    # Fetch questions for this branch
+    qs_res = db.table("questions").select("id, correct_answer, marks").eq("branch", branch).execute()
+    correct_map = {q["id"]: (q["correct_answer"], q["marks"]) for q in (qs_res.data or [])}
+
+    score = 0
+    total_marks = sum(m for _, m in correct_map.values())
+    for q_id, selected in answers.items():
+        if q_id in correct_map:
+            correct_ans, marks = correct_map[q_id]
+            if selected == correct_ans:
+                score += marks
+
+    submitted_at = datetime.now(timezone.utc).isoformat()
+    
+    # 4. Finalize session
+    if results_res.data:
+        db.table("exam_results").update({
+            "score": score,
+            "total_marks": total_marks,
+            "submitted_at": submitted_at
+        }).eq("student_id", student_id).execute()
+    else:
+        db.table("exam_results").insert({
+            "student_id": student_id,
+            "answers": answers,
+            "score": score,
+            "total_marks": total_marks,
+            "submitted_at": submitted_at
+        }).execute()
+
+    db.table("exam_status").update({
+        "status": "submitted",
+        "submitted_at": submitted_at
+    }).eq("student_id", student_id).execute()
+
+    db.table("students").update({
+        "is_active_session": False,
+        "current_token": None
+    }).eq("id", student_id).execute()
+
+    return {"status": "success", "score": score}
+
 # ── Exam Config (Orbital Control) ─────────────────────────────
 
 @router.get("/exam/config", response_model=ExamConfig)

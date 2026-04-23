@@ -21,15 +21,23 @@ async function apiFetch<T>(
   };
 
   const url = `${API_BASE}${path}`;
+  if (!token && !path.includes("/auth/login")) {
+    console.warn(`[API] Warning: Fetching ${url} without token.`);
+  }
+  
   console.log(`[API] Fetching: ${options.method || 'GET'} ${url}`);
 
   try {
     const res = await fetch(url, { ...options, headers });
 
     if (res.status === 401) {
+      console.error(`[API] 401 Unauthorized for ${url}. Clearing session.`);
       sessionStorage.removeItem("exam_token");
       sessionStorage.removeItem("exam_student");
-      window.location.href = "/login";
+      // Use window.location for hard redirect to clear state
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
       throw new Error("Unauthorized");
     }
 
@@ -55,6 +63,8 @@ export interface LoginResponse {
   branch: string;
   exam_start_time: string | null;
   exam_duration_minutes: number;
+  exam_title: string;
+  total_questions: number;
 }
 
 export async function loginStudent(
@@ -276,6 +286,14 @@ export async function deleteAdminStudent(id: string): Promise<void> {
 
 export async function resetAdminStudent(id: string): Promise<void> {
   await adminFetch(`/admin/students/${id}/reset`, { method: "POST" });
+}
+
+export async function forceSubmitAdminStudent(id: string): Promise<{ score: number }> {
+  return adminFetch<{ score: number }>(`/admin/students/${id}/force-submit`, { method: "POST" });
+}
+
+export async function cleanupStaleSessions(): Promise<{ count: number }> {
+  return adminFetch<{ count: number }>("/admin/students/cleanup-stale", { method: "POST" });
 }
 
 // ── Orbital Node Management (Folder CRUD) ─────────────────────

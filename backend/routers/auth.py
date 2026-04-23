@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
+from typing import Dict, Any
 from datetime import datetime, timezone, timedelta
 
 from models.schemas import LoginRequest, LoginResponse
@@ -149,6 +150,16 @@ async def login(request: LoginRequest):
             {"student_id": student["id"], "status": "not_started"}
         ).execute()
 
+    # 8. Fetch active exam title
+    exam_conf = db.table("exam_config").select("exam_title, duration_minutes, total_questions").eq("is_active", True).limit(1).execute()
+    current_exam_title = "Initial Assessment"
+    current_duration = settings.exam_duration_minutes
+    current_total_questions = getattr(settings, "total_questions", 30) # Fallback to settings or default
+    if exam_conf.data:
+        current_exam_title = exam_conf.data[0].get("exam_title", current_exam_title)
+        current_duration = exam_conf.data[0].get("duration_minutes", current_duration)
+        current_total_questions = exam_conf.data[0].get("total_questions", current_total_questions)
+
     return LoginResponse(
         access_token=token,
         student_id=student["id"],
@@ -156,7 +167,9 @@ async def login(request: LoginRequest):
         email=request.email or student.get("email"),
         branch=current_branch,
         exam_start_time=started_at,
-        exam_duration_minutes=settings.exam_duration_minutes,
+        exam_duration_minutes=current_duration,
+        exam_title=current_exam_title,
+        total_questions=current_total_questions,
     )
 
 

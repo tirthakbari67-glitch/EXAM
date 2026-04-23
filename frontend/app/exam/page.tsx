@@ -70,12 +70,16 @@ export default function ExamPage() {
       return;
     }
 
-    const info: StudentInfo = raw ? JSON.parse(raw) : { 
-      id: "PREVIEW", name: "Admin Preview", examStartTime: null, examDurationMinutes: 60 
+    const info = raw ? JSON.parse(raw) : { 
+      id: "PREVIEW", 
+      name: "Admin Preview", 
+      examStartTime: null, 
+      examDurationMinutes: 60,
+      examTitle: "Online Assessment"
     };
     setStudent(info);
 
-    const quizTitle = sessionStorage.getItem("exam_selected_title") || "Exam Assessment";
+    const quizTitle = sessionStorage.getItem("exam_selected_title") || info.examTitle || "Online Assessment";
     setExamTitle(quizTitle);
     
     // Pick random final theme on mount

@@ -21,6 +21,8 @@ class LoginResponse(BaseModel):
     branch: str = "CS"
     exam_start_time: Optional[str] = None     # ISO timestamp (when this student started)
     exam_duration_minutes: int
+    exam_title: str
+    total_questions: int
 
 
 class StartExamResponse(BaseModel):

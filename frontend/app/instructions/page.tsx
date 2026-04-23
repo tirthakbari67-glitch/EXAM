@@ -8,7 +8,13 @@ import Skeleton from "@/components/Skeleton";
 
 export default function InstructionsPage() {
   const router = useRouter();
-  const [studentInfo, setStudentInfo] = useState<{name: string, usn: string} | null>(null);
+  const [studentInfo, setStudentInfo] = useState<{
+    name: string, 
+    usn: string,
+    examTitle: string,
+    duration: number,
+    totalQuestions: number
+  } | null>(null);
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
@@ -19,20 +25,29 @@ export default function InstructionsPage() {
       return;
     }
 
-    try {
-      // Decode JWT to get student details
-      const payloadBase64 = token.split(".")[1];
-      const decodedStr = atob(payloadBase64);
-      const payload = JSON.parse(decodedStr);
-      
-      setStudentInfo({
-        name: payload.name || payload.student_name || "Student",
-        usn: payload.usn || "Candidate",
+    const studentData = sessionStorage.getItem("exam_student");
+    if (studentData) {
+      try {
+        const parsed = JSON.parse(studentData);
+        setStudentInfo({
+          name: parsed.name || "Student",
+          usn: parsed.usn || "Candidate",
+          examTitle: parsed.examTitle || "Online Assessment",
+          duration: parsed.examDurationMinutes || 60,
+          totalQuestions: parsed.totalQuestions || 40,
+        });
+      } catch (err) {
+        console.error("Could not parse student data", err);
+      }
+    } else {
+      // Fallback if session storage is weirdly empty but token exists
+      setStudentInfo({ 
+        name: "Student", 
+        usn: "Candidate", 
+        examTitle: "Online Assessment", 
+        duration: 60,
+        totalQuestions: 40 
       });
-    } catch (err) {
-      console.error("Could not parse token", err);
-      // Fallback
-      setStudentInfo({ name: "Student", usn: "Candidate" });
     }
   }, [router]);
 
@@ -40,8 +55,11 @@ export default function InstructionsPage() {
     if (starting) return;
     setStarting(true);
     try {
-      const res = await startExam();
+      const res = await startExam(studentInfo?.examTitle || "Initial Assessment");
       
+      // Store the specific title being used for the exam page
+      sessionStorage.setItem("exam_selected_title", studentInfo?.examTitle || "Online Assessment");
+
       // Update session storage with the real start time
       const studentData = sessionStorage.getItem("exam_student");
       if (studentData) {
@@ -61,6 +79,7 @@ export default function InstructionsPage() {
   const handleLogout = () => {
     sessionStorage.removeItem("exam_token");
     sessionStorage.removeItem("exam_student");
+    sessionStorage.removeItem("exam_selected_title");
     router.replace("/login");
   };
 
@@ -105,7 +124,7 @@ export default function InstructionsPage() {
       {/* ── Main Instructions ── */}
       <main className={styles.main}>
         <div className={styles.card}>
-          <h1 className={styles.title}>Innovation Quiz Instructions</h1>
+          <h1 className={styles.title}>{studentInfo.examTitle} Instructions</h1>
 
           <div className={styles.detailsBox}>
             <h2 className={styles.detailsTitle}>Exam Details</h2>
@@ -122,14 +141,14 @@ export default function InstructionsPage() {
                   <circle cx="12" cy="12" r="10"></circle>
                   <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
-                Duration: 1 minutes
+                Duration: {studentInfo.duration} minutes
               </div>
               <div className={styles.detailItem}>
                 <svg className={styles.detailIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
-                Total Questions: 40
+                Total Questions: {studentInfo.totalQuestions}
               </div>
               <div className={styles.detailItem}>
                 <svg className={styles.detailIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

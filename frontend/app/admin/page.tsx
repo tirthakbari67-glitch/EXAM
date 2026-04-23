@@ -21,6 +21,8 @@ import {
   AdminQuestion,
   AdminStudent,
   BranchExamSummary,
+  forceSubmitAdminStudent,
+  cleanupStaleSessions,
 } from "@/lib/api";
 import { BRANCH_IDS } from "@/lib/constants";
 import styles from "./admin.module.css";
@@ -64,6 +66,11 @@ function getElapsedTime(started: string | null, ended: string | null): string {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   return `${m}m ${s}s`;
+}
+
+function isStale(lastActive: string | null): boolean {
+  if (!lastActive) return true;
+  return (Date.now() - new Date(lastActive).getTime()) > 10 * 60 * 1000; // 10 mins
 }
 
 const BRANCHES = BRANCH_IDS;
@@ -305,8 +312,33 @@ export default function AdminPage() {
     return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, [authed, fetchStudents]);
 
+  const handleCleanup = async () => {
+    if (!confirm("This will reset all sessions idle for > 4 hours to 'Not Started'. Continue?")) return;
+    setLoading(true);
+    try {
+      const { count } = await cleanupStaleSessions();
+      alert(`Successfully cleaned up ${count} stale sessions.`);
+      fetchStudents();
+    } catch (err: any) {
+      alert("Cleanup failed: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForceSubmit = async (s: StudentRow) => {
+    if (!confirm(`Force submit exam for ${s.name}? This will calculate score based on currently saved answers.`)) return;
+    try {
+      await forceSubmitAdminStudent(s.student_id);
+      fetchStudents();
+    } catch (err: any) {
+      alert("Force submit failed: " + err.message);
+    }
+  };
+
   const total     = students.length;
-  const active    = students.filter((s) => s.status === "active").length;
+  const active    = students.filter((s) => s.status === "active" && !isStale(s.last_active)).length;
+  const idle      = students.filter((s) => s.status === "active" && isStale(s.last_active)).length;
   const submitted = students.filter((s) => s.status === "submitted").length;
   const notStarted = students.filter((s) => s.status === "not_started").length;
   const flagged   = students.filter((s) => s.warnings >= 2).length;
@@ -454,6 +486,9 @@ export default function AdminPage() {
               <div>
                 <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "var(--text-primary)", lineHeight: 1 }}>
                   {active}
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-muted)", marginLeft: 8 }}>
+                    ({idle} stale/idle)
+                  </span>
                 </div>
                 <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4, fontWeight: 500 }}>Active Students</div>
               </div>
@@ -539,6 +574,9 @@ export default function AdminPage() {
                   {f === "not_started" ? "Not Started" : f.charAt(0).toUpperCase() + f.slice(1)}
                 </button>
               ))}
+              <button className="btn btn-outline" onClick={handleCleanup} style={{ fontSize: 12, padding: "6px 14px", border: "1px dashed var(--warning)", color: "var(--warning)" }}>
+                🧹 Cleanup Stale
+              </button>
             </div>
           </div>
 
@@ -557,7 +595,7 @@ export default function AdminPage() {
                   <tr>
                     <th>#</th><th>USN NO.</th><th>Name</th><th>Email</th>
                     <th>Branch</th><th>Status</th><th>Start Time</th><th>Total Time</th>
-                    <th>Submitted At</th>
+                    <th>Submitted At</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -575,6 +613,18 @@ export default function AdminPage() {
                       <td style={{ fontSize: 12, color: "var(--text-muted)" }}>{getElapsedTime(s.started_at, s.submitted_at)}</td>
                       <td style={{ fontSize: 12, color: "var(--text-muted)" }}>
                         {s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString() : "—"}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {s.status === "active" && (
+                            <button className="btn btn-outline" style={{ fontSize: 10, padding: "4px 8px" }} onClick={() => handleForceSubmit(s)}>
+                              Submit
+                            </button>
+                          )}
+                          <button className="btn btn-outline" style={{ fontSize: 10, padding: "4px 8px" }} onClick={() => resetAdminStudent(s.student_id).then(fetchStudents)}>
+                            Reset
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

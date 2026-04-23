@@ -68,6 +68,8 @@ export default function LoginPage() {
           name: data.student_name,
           examStartTime: data.exam_start_time,
           examDurationMinutes: data.exam_duration_minutes,
+          examTitle: data.exam_title,
+          totalQuestions: data.total_questions,
         })
       );
 
@@ -99,8 +101,8 @@ export default function LoginPage() {
               <path d="M24 16L30 19.5V26.5L24 30L18 26.5V19.5L24 16Z" stroke="#c7d2fe" strokeWidth="1" fill="none" opacity="0.7"/>
             </svg>
           </div>
-          <h1 className={styles.title}>IP NEXUS</h1>
-          <p className={styles.subtitle}>Welcome to IP NEXUS, Innovation Quiz</p>
+          <h1 className={styles.title}>ExamGuard</h1>
+          <p className={styles.subtitle}>Secure Online Examination Portal</p>
           <p className={styles.subtitleSmall}>Sign up to continue</p>
         </div>
 
@@ -245,7 +247,7 @@ export default function LoginPage() {
 
       {/* Footer */}
       <p className={styles.footer}>
-        IP NEXUS v1.0 · Innovation Quiz Platform
+        ExamGuard v1.0 · Secured Portal
       </p>
     </div>
   );
