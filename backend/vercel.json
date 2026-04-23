@@ -14,7 +14,8 @@
   "crons": [
     {
       "path": "/api/cron/evict",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
+
 }
