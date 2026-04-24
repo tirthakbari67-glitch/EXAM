@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "/api/main.py"
+      "destination": "/api/index.py"
     },
     {
       "source": "/((?!api/).*)",
