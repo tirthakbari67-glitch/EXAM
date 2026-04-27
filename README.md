@@ -1,64 +1,36 @@
-# ExamGuard — Deployment Guide
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Follow these steps to deploy the system to **Railway** (Backend) and **Vercel** (Frontend).
+## Getting Started
 
----
+First, run the development server:
 
-## 1. Supabase Setup (Database)
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-1. Create a new project at [supabase.com](https://supabase.com).
-2. Go to **SQL Editor** → **New Query**.
-3. Copy contents of `supabase/schema.sql` and run it.
-4. Run `supabase/seed.sql` to load standard questions and sample students.
-5. Go to **Project Settings** → **API** and copy:
-   - `Project URL`
-   - `Anon Key` (Public)
-   - `Service Role Key` (Private - DO NOT SHARE)
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
----
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## 2. Backend Deployment (Railway)
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-1. Create a [Railway](https://railway.app) account.
-2. Click **New Project** → **Deploy from GitHub repo** (or use Railway CLI).
-3. Select the `backend/` directory.
-4. Add the following **Environment Variables** in Railway:
-   - `SUPABASE_URL`: (Your Supabase URL)
-   - `SUPABASE_SERVICE_KEY`: (Your Service Role Key)
-   - `JWT_SECRET`: (A long random string)
-   - `ALLOWED_ORIGINS`: `https://your-vercel-app.vercel.app` (Add localhost for testing)
-5. Railway will automatically detect the `requirements.txt` and `main.py`.
-6. Use the following start command if prompted: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+## Learn More
 
----
+To learn more about Next.js, take a look at the following resources:
 
-## 3. Frontend Deployment (Vercel)
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-1. Create a [Vercel](https://vercel.com) account.
-2. Click **Add New** → **Project** → **Import from GitHub**.
-3. Select the `frontend/` directory.
-4. Add the following **Environment Variables** in Vercel:
-   - `NEXT_PUBLIC_SUPABASE_URL`: (Your Supabase URL)
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: (Your Anon Key)
-   - `NEXT_PUBLIC_API_URL`: `https://your-backend-url.railway.app`
-   - `ADMIN_PASSWORD`: (Choose a secure password for the admin dashboard)
-5. Click **Deploy**.
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
----
+## Deploy on Vercel
 
-## 4. Production Load Testing
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-To verify the system can handle **266 concurrent students**:
-
-1. Install Locust: `pip install locust`
-2. Run the provided load test script (to be created in `tests/load_test.py`).
-3. Point it to your Railway production URL.
-4. Monitor Railway's CPU/RAM and Supabase's connection count.
-
----
-
-## 5. Summary of URLs
-
-- **API Docs:** `https://your-backend.railway.app/docs`
-- **Student Exam:** `https://your-app.vercel.app/login`
-- **Admin Dashboard:** `https://your-app.vercel.app/admin`
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

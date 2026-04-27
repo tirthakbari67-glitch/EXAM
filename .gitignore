@@ -1,35 +1,45 @@
-# Dependency directories
-node_modules/
-jspm_packages/
-venv/
-.venv/
-env/
-.env
-.env.local
-.env.*.local
-\
-# next.js build output
-.next/
-out/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# python hex/build
-__pycache__/
-*.py[cod]
-*$py.class
-.ruff_cache/
-.pytest_cache/
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
 
 # misc
 .DS_Store
-*.log
+*.pem
+
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# agentic logs/plans (as recommended)
-.planning/
-scratch/
-debug_*.txt
-debug_ingest.txt
-debug_page_*.txt
-破, ID: 8a6ceba2-4cfd-47fb-8e1c-2498eea9caec破
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# python (api serverless functions)
+__pycache__/
+*.py[cod]
