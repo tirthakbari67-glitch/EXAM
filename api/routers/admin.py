@@ -144,28 +144,33 @@ async def upload_question_image(
 
 @router.get("/students", response_model=list[StudentStatus])
 async def get_all_students(_: bool = Depends(verify_admin)):
-    db = get_supabase()
-    result = db.table("exam_status").select("*, students(usn, email, name, branch)").execute()
+    try:
+        db = get_supabase()
+        result = db.table("exam_status").select("*, students(usn, email, name, branch)").execute()
 
-    rows = []
-    for r in result.data:
-        student_info = r.get("students")
-        if not student_info:
-            continue
+        rows = []
+        if result.data:
+            for r in result.data:
+                student_info = r.get("students")
+                if not student_info:
+                    continue
 
-        rows.append(StudentStatus(
-            student_id=r["student_id"],
-            usn=student_info.get("usn", "UNKNOWN"),
-            name=student_info.get("name", "UNKNOWN"),
-            email=student_info.get("email"),
-            branch=student_info.get("branch", "CS"),
-            status=r["status"],
-            warnings=r["warnings"],
-            last_active=r["last_active"],
-            submitted_at=r["submitted_at"],
-            started_at=r.get("started_at")
-        ))
-    return rows
+                rows.append(StudentStatus(
+                    student_id=r["student_id"],
+                    usn=student_info.get("usn", "UNKNOWN"),
+                    name=student_info.get("name", "UNKNOWN"),
+                    email=student_info.get("email"),
+                    branch=student_info.get("branch", "CS"),
+                    status=r["status"],
+                    warnings=r["warnings"],
+                    last_active=r["last_active"],
+                    submitted_at=r["submitted_at"],
+                    started_at=r.get("started_at")
+                ))
+        return rows
+    except Exception as e:
+        print(f"CRITICAL get_all_students: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.post("/students")
 async def create_student(request: StudentCreate, _: bool = Depends(verify_admin)):
