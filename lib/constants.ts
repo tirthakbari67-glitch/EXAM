@@ -1,12 +1,16 @@
 export const BRANCHES = [
-  { id: "DS", name: "Data Science (DS)" },
-  { id: "CS", name: "Cyber Security (CS)" },
-  { id: "AI", name: "Artificial Intelligence (AI)" },
-  { id: "CSE", name: "Computer Science & Eng (CSE)" },
-  { id: "ISC", name: "Information Science (ISC)" },
-  { id: "ECE", name: "Electronics (ECE)" },
-  { id: "BCA-1st", name: "BCA 1st Year" },
-  { id: "BCA-2nd", name: "BCA 2nd Year" },
+  { id: "CS", name: "CS" },
+  { id: "DS", name: "DS" },
+  { id: "CSE", name: "CSE" },
+  { id: "ISE", name: "ISE" },
+  { id: "ECE", name: "ECE" },
+  { id: "AI-ML", name: "AI-ML" },
+  { id: "BCA-1", name: "BCA-1 year" },
+  { id: "BCA-2", name: "BCA-2 year" },
+  { id: "MBA-1", name: "MBA-1 year" },
+  { id: "MBA-2", name: "MBA-2 year" },
+  { id: "MCA-2", name: "MCA-2 year" },
+  { id: "BBA-2", name: "BBA-2 year" },
 ];
 
 export const BRANCH_IDS = BRANCHES.map(b => b.id);
