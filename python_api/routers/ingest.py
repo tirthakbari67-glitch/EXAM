@@ -340,15 +340,25 @@ def _extract_questions_from_text(raw_text: str) -> Tuple[List[ParsedQuestion], L
 
         opts: Dict[str, str] = {}
         last_found_pos = 0
+        # Robust Option Extraction (A. A) (A) [A] etc.)
         for label in _OPTION_LABELS:
+            # Look for label at start of line or after space, followed by various delimiters
+            # and non-greedily capture until next option, next question, or end of block
             opt_pat = re.compile(
-                fr"(?:\s|^)\(?{label}[.)]\s*(.+?)(?=\s*\(?[A-Da-d][.)]\s|\s*\d+[.)]|\Z)",
+                fr"(?:\s|^|\n)[\(\[\{{]?{label}[\.\)\s\]\}}]\s*(.+?)(?=\s*[\(\[\{{]?[A-Da-d][\.\)\s\]\}}]\s|\s*(?:Question\s*|Q\s*)?\d+[.)]|\Z)",
                 re.IGNORECASE | re.DOTALL,
             )
             m = opt_pat.search(block, last_found_pos)
             if m:
                 opts[label] = _clean(m.group(1))
                 last_found_pos = m.end() - 1
+            else:
+                # Secondary attempt: Try to find just the label if first one fails
+                fallback_pat = re.compile(fr"\b{label}\b[:\s]+(.+?)(?=\b[A-D]\b[:\s]|\Z)", re.IGNORECASE | re.DOTALL)
+                fm = fallback_pat.search(block, last_found_pos)
+                if fm:
+                    opts[label] = _clean(fm.group(1))
+                    last_found_pos = fm.end() - 1
 
         q_text_content = block
         first_opt_label = next(iter(opts.keys()), None)
