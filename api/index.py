@@ -111,10 +111,14 @@ try:
     # ── Global Error Handler ──────────────────────────────────────
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
-        logger.error(f"Unhandled error on {request.url}: {exc}", exc_info=True)
+        tb = traceback.format_exc()
+        logger.error(f"Unhandled error on {request.url}: {exc}\n{tb}")
         return JSONResponse(
             status_code=500,
-            content={"detail": str(exc)},
+            content={
+                "detail": str(exc),
+                "traceback": tb if not os.getenv("PROD") else "Hidden for security"
+            },
         )
 
 except Exception as e:
