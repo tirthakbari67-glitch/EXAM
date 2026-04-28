@@ -9,8 +9,11 @@ from slowapi.errors import RateLimitExceeded
 import logging
 import asyncio
 from datetime import datetime, timezone
-from db.supabase_client import get_supabase
+import os
+import sys
+sys.path.append(os.path.dirname(__file__))
 
+from db.supabase_client import get_supabase
 from core.config import get_settings
 from routers import auth, exam, violations, admin, ingest, leaderboard
 
