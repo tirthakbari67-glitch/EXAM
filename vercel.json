@@ -1,13 +1,13 @@
 {
   "functions": {
-    "api/**/*.py": {
+    "backend/**/*.py": {
       "runtime": "@vercel/python"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "destination": "/backend/index.py"
     }
   ]
 }
