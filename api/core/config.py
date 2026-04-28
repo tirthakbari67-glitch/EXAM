@@ -4,11 +4,11 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # Supabase
-    supabase_url: str
-    supabase_service_key: str  # service_role key for backend
+    supabase_url: str = ""
+    supabase_service_key: str = ""  # service_role key for backend
 
     # JWT
-    jwt_secret: str
+    jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 90  # slightly longer than exam duration
 
