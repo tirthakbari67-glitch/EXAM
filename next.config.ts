@@ -12,8 +12,12 @@ const nextConfig: NextConfig = {
           destination: `${apiUrl}/:path*`,
         },
       ];
-    }
-    return [];
+    return [
+      {
+        source: '/api/:path*',
+        destination: '/api/index.py',
+      },
+    ];
   },
 };
 
