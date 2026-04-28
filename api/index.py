@@ -1,6 +1,5 @@
-# Vercel Deployment Force Update
+# Vercel Deployment — ExamGuard API
 from fastapi import FastAPI, Request
-
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -10,12 +9,14 @@ import logging
 import asyncio
 from datetime import datetime, timezone
 import traceback
-from fastapi.responses import JSONResponse
 
 try:
     import os
     import sys
-    sys.path.append(os.path.dirname(__file__))
+    # Ensure the api/ directory is on the Python path for absolute imports
+    api_dir = os.path.dirname(os.path.abspath(__file__))
+    if api_dir not in sys.path:
+        sys.path.insert(0, api_dir)
 
     from db.supabase_client import get_supabase
     from core.config import get_settings
@@ -34,13 +35,15 @@ try:
     settings = get_settings()
 
     # ── App ───────────────────────────────────────────────────────
+    # NOTE: No root_path here. On Vercel, the rewrite sends /api/* to this
+    # function and the ASGI app receives the FULL path (e.g. /api/admin/students).
+    # All routers use /api-prefixed routes to match.
     app = FastAPI(
         title="ExamGuard API",
         description="Online Exam System for 266 Concurrent Students",
         version="1.0.0",
-        docs_url="/docs",
+        docs_url="/api/docs",
         redoc_url=None,
-        root_path="/api"
     )
 
     # ── CORS ──────────────────────────────────────────────────────
@@ -58,12 +61,13 @@ try:
         return {"status": "ok", "version": "1.0.0", "timestamp": datetime.now(timezone.utc).isoformat()}
 
     # ── Routers ───────────────────────────────────────────────────
-    app.include_router(auth.router)
-    app.include_router(exam.router)
-    app.include_router(violations.router)
-    app.include_router(admin.router)
-    app.include_router(ingest.router)
-    app.include_router(leaderboard.router)
+    # Mount all routers under /api prefix so they match the full Vercel URL path
+    app.include_router(auth.router,        prefix="/api")
+    app.include_router(exam.router,        prefix="/api")
+    app.include_router(violations.router,  prefix="/api")
+    app.include_router(admin.router,       prefix="/api")
+    app.include_router(ingest.router,      prefix="/api")
+    app.include_router(leaderboard.router, prefix="/api")
 
     # ── Cron Endpoint ──────────────────────────────────────────────
     @app.get("/api/cron/evict", tags=["cron"])
@@ -87,9 +91,10 @@ try:
             return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
     # ── Root ──────────────────────────────────────────────────────
+    @app.get("/api", tags=["root"])
     @app.get("/", tags=["root"])
     async def root():
-        return {"message": "ExamGuard API — Online Exam System", "docs": "/docs"}
+        return {"message": "ExamGuard API — Online Exam System", "docs": "/api/docs"}
 
     # ── Global Error Handler ──────────────────────────────────────
     @app.exception_handler(Exception)
@@ -101,16 +106,23 @@ try:
         )
 
 except Exception as e:
+    # Fallback app that shows the initialization error for debugging
     app = FastAPI()
+    
+    import traceback as tb
+    _init_error = str(e)
+    _init_traceback = tb.format_exc()
+
     @app.get("/api/health")
     @app.get("/health")
+    @app.get("/api")
     @app.get("/")
     async def error_health(request: Request):
         return JSONResponse(
             status_code=500,
             content={
                 "status": "initialization_failed",
-                "error": str(e),
-                "traceback": traceback.format_exc()
+                "error": _init_error,
+                "traceback": _init_traceback
             }
         )

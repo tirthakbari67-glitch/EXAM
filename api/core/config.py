@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+import os
 
 
 class Settings(BaseSettings):
@@ -48,9 +49,13 @@ class Settings(BaseSettings):
         return list(final)
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Look for .env file relative to this file's directory AND project root
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
-        case_sensitive=False
+        case_sensitive=False,
+        # Extra: ignore missing .env files (critical for Vercel where env vars
+        # are injected as real environment variables, not .env files)
+        extra="ignore",
     )
 
 
