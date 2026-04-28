@@ -255,7 +255,7 @@ export default function AdminPage() {
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pass === (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin@examguard2024")) {
+    if (pass === (process.env.NEXT_PUBLIC_ADMIN_SECRET || "admin@examguard2024")) {
       setAuthed(true);
     } else {
       setPassError("Incorrect admin password.");

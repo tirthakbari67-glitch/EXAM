@@ -618,6 +618,15 @@ async def commit_questions(
     if not questions:
         raise HTTPException(status_code=400, detail="No questions to import")
 
+    # ── Step 0: Random Sampling ──
+    if request.max_questions and request.max_questions > 0 and len(questions) > request.max_questions:
+        import random
+        logger.info(f"Sampling {request.max_questions} random questions from {len(questions)} total.")
+        questions = random.sample(questions, request.max_questions)
+        # Reset order indices if they were Sequential
+        for i, q in enumerate(questions):
+            q.order_index = i
+
     # ── Step 1: Dynamic Schema Discovery ──
     try:
         # Probe the table to see exactly which columns exist
@@ -653,10 +662,14 @@ async def commit_questions(
 
     # ── Step 3: Deployment & Node Clearing ──
     if request.replace_existing:
-        if "exam_name" in db_columns:
-            db.table("questions").delete().eq("exam_name", safe_exam_name).execute()
-        else:
-            db.table("questions").delete().like("text", f"{tag_prefix}%").execute()
+        # Delete by both name AND branch to ensure clean state for this student group
+        db.table("questions").delete().eq("exam_name", safe_exam_name).execute()
+        
+        # Determine branch from the first question in the batch
+        target_branch = request.questions[0].branch if request.questions else "CS"
+        db.table("questions").delete().eq("branch", target_branch).execute()
+        
+        db.table("questions").delete().like("text", f"{tag_prefix}%").execute()
         logger.info(f"Isolation Node '{safe_exam_name}' reset for fresh harvest.")
 
     # ── Step 3: Schema-Safe Payload Refinement ──
@@ -689,9 +702,28 @@ async def commit_questions(
         result = db.table("questions").insert(rows_to_insert).execute()
         
         # Verify success
-        # Some versions of execute() don't return data on insert. 
-        # We rely on no exception being raised.
         inserted_count = len(result.data) if result.data else len(rows_to_insert)
+
+        # ── Step 5: Sync Exam Config ──
+        try:
+            from datetime import datetime, timezone
+            total_marks = sum(r.get("marks", 1) for r in rows_to_insert)
+            
+            # Deactivate ALL other exams first to ensure this one becomes the global active one
+            db.table("exam_config").update({"is_active": False}).execute()
+            
+            db.table("exam_config").upsert({
+                "exam_title": safe_exam_name,
+                "total_questions": inserted_count,
+                "total_marks": total_marks,
+                "duration_minutes": 20,  # Enforced 20 min exam as per user request
+                "is_active": True,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }, on_conflict="exam_title").execute()
+            
+            logger.info(f"Exam Config synced for '{safe_exam_name}': {inserted_count} qs, 20 mins, active.")
+        except Exception as config_err:
+            logger.warning(f"Sync Config failed: {config_err}")
         
         return {
             "committed": inserted_count,

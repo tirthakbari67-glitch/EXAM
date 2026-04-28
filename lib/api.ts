@@ -11,7 +11,7 @@ async function apiFetch<T>(
 ): Promise<T> {
   const token = getToken();
   const isPreview = typeof window !== "undefined" && sessionStorage.getItem("exam_preview") === "true";
-  const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin@examguard2024";
+  const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET || "admin@examguard2024";
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -184,7 +184,7 @@ export interface AdminStudent {
   started_at: string | null;
 }
 
-const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin@examguard2024";
+const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET || "admin@examguard2024";
 
 function adminFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${path}`;

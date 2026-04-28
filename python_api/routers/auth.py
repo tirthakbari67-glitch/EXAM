@@ -150,14 +150,23 @@ async def login(request: LoginRequest):
             {"student_id": student["id"], "status": "not_started"}
         ).execute()
 
-    # 8. Fetch active exam title
-    exam_conf = db.table("exam_config").select("exam_title, duration_minutes, total_questions").eq("is_active", True).limit(1).execute()
+    # 8. Fetch the LATEST active exam config
+    exam_conf = (
+        db.table("exam_config")
+        .select("exam_title, duration_minutes, total_questions")
+        .eq("is_active", True)
+        .order("updated_at", desc=True) # Get the most recent one!
+        .limit(1)
+        .execute()
+    )
+    
     current_exam_title = "Initial Assessment"
-    current_duration = settings.exam_duration_minutes
-    current_total_questions = getattr(settings, "total_questions", 30) # Fallback to settings or default
+    current_duration = 20 # Default to 20 as requested
+    current_total_questions = 30
+    
     if exam_conf.data:
         current_exam_title = exam_conf.data[0].get("exam_title", current_exam_title)
-        current_duration = exam_conf.data[0].get("duration_minutes", current_duration)
+        current_duration = exam_conf.data[0].get("duration_minutes") or 20
         current_total_questions = exam_conf.data[0].get("total_questions", current_total_questions)
 
     return LoginResponse(

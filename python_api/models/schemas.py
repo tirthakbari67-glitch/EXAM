@@ -246,6 +246,7 @@ class BulkImportRequest(BaseModel):
     questions: List[ParsedQuestion]
     replace_existing: bool = False
     exam_name: str  # Mandatory for Crystalline Isolation Node anchoring
+    max_questions: Optional[int] = None
 
 
 class FolderRenameRequest(BaseModel):

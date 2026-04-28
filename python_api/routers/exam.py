@@ -64,23 +64,57 @@ def get_questions(
     # Update last_active in background
     background_tasks.add_task(update_last_active, current["student_id"])
 
-    # Fetch questions filtered by title AND branch
+    # ── Strategy 1: Branch + Title Match (Strict per specific exam) ──
+    branch = current.get("branch", "CS")
     result = (
         db.table("questions")
         .select("id, text, options, branch, order_index, marks, exam_name")
-        .eq("branch", current.get("branch", "CS"))
+        .eq("branch", branch)
         .eq("exam_name", title)
         .order("order_index")
         .limit(100)
         .execute()
     )
 
+    # ── Strategy 2: Fallback to Branch Only (User's primary request for flexible matching) ──
+    if not result.data:
+        result = (
+            db.table("questions")
+            .select("id, text, options, branch, order_index, marks, exam_name")
+            .eq("branch", branch)
+            .order("order_index")
+            .limit(100)
+            .execute()
+        )
+
+    # ── Strategy 3: Fallback to Exam Title only ──
+    if not result.data:
+        result = (
+            db.table("questions")
+            .select("id, text, options, branch, order_index, marks, exam_name")
+            .eq("exam_name", title)
+            .order("order_index")
+            .limit(100)
+            .execute()
+        )
+
+    # ── Strategy 4: Fallback to Spectral Tags ──
+    if not result.data:
+        result = (
+            db.table("questions")
+            .select("id, text, options, branch, order_index, marks, exam_name")
+            .ilike("text", f"%⟦EXAM:{title}⟧%")
+            .order("order_index")
+            .limit(100)
+            .execute()
+        )
+
     questions = [
         QuestionOut(
             id=q["id"],
-            text=q["text"],
+            text=q["text"].replace(f"⟦EXAM:{title}⟧", "").strip(),
             options=q["options"],
-            branch=q.get("branch", "CS"),
+            branch=q.get("branch", branch),
             order_index=q["order_index"],
             marks=q["marks"],
         )
@@ -192,21 +226,36 @@ def submit_exam(
             submitted_at=r.get("submitted_at", datetime.now(timezone.utc).isoformat()),
         )
 
-    # 2. Load correct answers for this specific exam
+    # 2. Load correct answers using Smart Search (matching get_questions logic)
     answers = request.answers
-    exam_title = answers.pop("__exam_title", "ExamGuard Assessment")
+    exam_title = answers.pop("__exam_title", "Initial Assessment")
+    branch = current.get("branch", "CS")
 
-    try:
+    # Strategy 1: Branch Match (Priority)
+    questions_result = (
+        db.table("questions")
+        .select("id, correct_answer, marks")
+        .eq("branch", branch)
+        .execute()
+    )
+
+    # Strategy 2: Title + Branch
+    if not questions_result.data:
         questions_result = (
             db.table("questions")
             .select("id, correct_answer, marks")
-            .eq("branch", current.get("branch", "CS"))
             .eq("exam_name", exam_title)
+            .eq("branch", branch)
             .execute()
         )
-    except Exception:
+
+    # Strategy 3: Title Only
+    if not questions_result.data:
         questions_result = (
-            db.table("questions").select("id, correct_answer, marks").execute()
+            db.table("questions")
+            .select("id, correct_answer, marks")
+            .eq("exam_name", exam_title)
+            .execute()
         )
     
     correct_map = {

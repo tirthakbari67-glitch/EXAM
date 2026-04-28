@@ -31,7 +31,7 @@ export default function ExamPage() {
   const [error, setError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitResult, setSubmitResult] = useState<SubmitResponse | null>(null);
-  const [showResultDetails, setShowResultDetails] = useState(false);
+  const [showResultDetails, setShowResultDetails] = useState(true);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [examInactive, setExamInactive] = useState(false);
@@ -304,22 +304,8 @@ export default function ExamPage() {
                 Answered: {getAnsweredCount(questions.length)}/{questions.length}
               </div>
 
-              {resultTimerSeconds > 0 && (
-                <div className={styles.resultTimer}>
-                  Result in: {formatResultTime(resultTimerSeconds)}
-                </div>
-              )}
             </div>
 
-            {/* View Result Button - appears when timer is 0 */}
-            {resultTimerSeconds === 0 && !showResultDetails && (
-              <button 
-                className={styles.viewResultBtn}
-                onClick={() => setShowResultDetails(true)}
-              >
-                View Detailed Result
-              </button>
-            )}
 
             {/* Detailed Breakdown */}
             {showResultDetails && submitResult && (

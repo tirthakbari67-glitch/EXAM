@@ -156,6 +156,7 @@ export default function IngestPage() {
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState("CS");
   const [examName, setExamName] = useState("");
+  const [maxQuestions, setMaxQuestions] = useState<number | "">("");
   const [showGatekeeperAlert, setShowGatekeeperAlert] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -235,6 +236,7 @@ export default function IngestPage() {
           questions: questionsWithTether,
           replace_existing: replaceExisting,
           exam_name: examName,
+          max_questions: maxQuestions === "" ? null : maxQuestions,
         }),
       });
       if (!res.ok) {
@@ -299,6 +301,21 @@ export default function IngestPage() {
               value={examName}
               onChange={(e) => { setExamName(e.target.value); setShowGatekeeperAlert(false); }}
             />
+          </div>
+
+          {/* Question Count Orb */}
+          <div className={styles.orbContainer} style={{ marginTop: 12 }}>
+            <label className={styles.orbLabel}>Question Count (Optional)</label>
+            <input
+              type="number"
+              placeholder="Total questions to ingest (e.g. 20)"
+              className={`${styles.orbInput} ${maxQuestions ? styles.orbActive : ""}`}
+              value={maxQuestions}
+              onChange={(e) => setMaxQuestions(e.target.value ? parseInt(e.target.value) : "")}
+            />
+            <div style={{ fontSize: 10, opacity: 0.5, marginTop: 4, textAlign: "center" }}>
+              If specified, we will pick random questions from your file.
+            </div>
           </div>
 
           <div
