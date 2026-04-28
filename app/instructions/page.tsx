@@ -33,7 +33,7 @@ export default function InstructionsPage() {
           name: parsed.name || "Student",
           usn: parsed.usn || "Candidate",
           examTitle: parsed.examTitle || "Online Assessment",
-          duration: parsed.examDurationMinutes || 20,
+          duration: 20,
           totalQuestions: parsed.totalQuestions || 30,
         });
       } catch (err) {

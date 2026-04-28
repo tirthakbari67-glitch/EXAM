@@ -77,6 +77,10 @@ export default function ExamPage() {
       examDurationMinutes: 20,
       examTitle: "Online Assessment"
     };
+    
+    // STRICT OVERRIDE: Always force 20 minutes for production
+    info.examDurationMinutes = 20;
+    
     setStudent(info);
 
     const quizTitle = sessionStorage.getItem("exam_selected_title") || info.examTitle || "Online Assessment";

@@ -58,7 +58,7 @@ export default function LoginPage() {
           id: data.student_id,
           name: data.student_name,
           examStartTime: data.exam_start_time,
-          examDurationMinutes: data.exam_duration_minutes,
+          examDurationMinutes: 20, // STRICT OVERRIDE
           examTitle: data.exam_title,
           totalQuestions: data.total_questions,
         })
