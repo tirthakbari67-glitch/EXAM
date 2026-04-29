@@ -65,8 +65,9 @@ def get_questions(
     background_tasks.add_task(update_last_active, current["student_id"])
 
     try:
-        # ── Strategy 1: Strict Branch + Title Match ──
         branch = current.get("branch", "CS")
+        
+        # ── Strategy 1: Strict Branch + Strict Title Match ──
         result = (
             db.table("questions")
             .select("id, text, options, branch, order_index, marks, exam_name")
@@ -77,28 +78,45 @@ def get_questions(
             .execute()
         )
 
-        # ── Strategy 2: Title-only Fallback ──
-        # (This is safe because we check result.data first)
+        # ── Strategy 2: Strict Branch + Fuzzy Title Match ──
+        # (Handles cases where active exam title is 'IP NEXUS' but questions are 'IP NEXUS DS')
         if not result.data:
             result = (
                 db.table("questions")
                 .select("id, text, options, branch, order_index, marks, exam_name")
-                .eq("exam_name", title)
+                .eq("branch", branch)
+                .ilike("exam_name", f"%{title}%")
                 .order("order_index")
                 .limit(100)
                 .execute()
             )
             
-        # ── Strategy 3: Legacy Spectral Tag Fallback ──
+        # ── Strategy 3: Strict Branch + Legacy Spectral Tag Fallback ──
         if not result.data:
             result = (
                 db.table("questions")
                 .select("id, text, options, branch, order_index, marks, exam_name")
-                .ilike("text", f"%{title}%")
+                .eq("branch", branch)
+                .ilike("text", f"%⟦EXAM:{title}⟧%")
                 .order("order_index")
                 .limit(100)
                 .execute()
             )
+
+        # ── Strategy 4: Final Branch-Only Fallback ──
+        # If an exam is active and there are questions for this branch, show them!
+        if not result.data:
+            result = (
+                db.table("questions")
+                .select("id, text, options, branch, order_index, marks, exam_name")
+                .eq("branch", branch)
+                .order("order_index")
+                .limit(100)
+                .execute()
+            )
+    except Exception as e:
+        print(f"[EXAM] DB Error during question fetch: {e}")
+        return QuestionsResponse(questions=[], total=0)
     except Exception as e:
         print(f"[EXAM] DB Error during question fetch: {e}")
         # Return empty list instead of 500 to keep UI stable
