@@ -25,7 +25,7 @@ import {
   forceSubmitAdminStudent,
   cleanupStaleSessions,
 } from "@/lib/api";
-import { BRANCH_IDS } from "@/lib/constants";
+import { BRANCHES as BRANCH_LIST, BRANCH_IDS } from "@/lib/constants";
 import styles from "./admin.module.css";
 import adminStyles from "./admin-management.module.css";
 import Skeleton from "@/components/Skeleton";
@@ -75,6 +75,7 @@ function isStale(lastActive: string | null): boolean {
 }
 
 const BRANCHES = BRANCH_IDS;
+const ALL_BRANCH_DATA = BRANCH_LIST;
 type Tab = "monitor" | "questions" | "students" | "leaderboard" | "ingest" | "control";
 const ADMIN_AUTH_KEY = "examguard_admin_auth";
 
@@ -793,6 +794,8 @@ function QuestionsTab() {
     exam_name: "General Assessment",
     image_url: ""
   });
+  const [folderBranchModal, setFolderBranchModal] = useState<{ name: string, branch: string } | null>(null);
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -865,16 +868,21 @@ function QuestionsTab() {
     }
   };
 
-  const handleEditBranchFolder = async (folderName: string) => {
-    const newBranch = prompt(`Enter new branch ID for Isolation Node '${folderName}' (e.g. CS, IS, EC):`, "CS");
-    if (!newBranch) return;
+  const handleEditBranchFolder = (folderName: string) => {
+    // Find current branch of this folder (from first question)
+    const currentBranch = questions.find(q => q.exam_name === folderName)?.branch || "CS";
+    setFolderBranchModal({ name: folderName, branch: currentBranch });
+  };
 
+  const handleSaveFolderBranch = async () => {
+    if (!folderBranchModal) return;
     try {
       setLoading(true);
-      await editAdminFolderBranch(folderName, newBranch.trim());
+      await editAdminFolderBranch(folderBranchModal.name, folderBranchModal.branch);
       setQuestions(questions.map(q => 
-        q.exam_name === folderName ? { ...q, branch: newBranch.trim() } : q
+        q.exam_name === folderBranchModal.name ? { ...q, branch: folderBranchModal.branch } : q
       ));
+      setFolderBranchModal(null);
     } catch (error: any) {
       alert(`Failed to update branch: ${error.message}`);
     } finally {
@@ -1190,7 +1198,7 @@ function QuestionsTab() {
               <div className={adminStyles.formGroup}>
                 <label>Branch</label>
                 <select className={adminStyles.input} value={formData.branch} onChange={(e) => setFormData({ ...formData, branch: e.target.value })}>
-                  {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+                  {ALL_BRANCH_DATA.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
             </div>
@@ -1241,6 +1249,32 @@ function QuestionsTab() {
           </div>
         </div>
       )}
+
+      {folderBranchModal && (
+        <div className={adminStyles.modalOverlay} onClick={() => setFolderBranchModal(null)}>
+          <div className={adminStyles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <h3>Edit Folder Branch</h3>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+              Updating the branch for <strong>{folderBranchModal.name}</strong> will affect all questions inside it.
+            </p>
+            <div className={adminStyles.formGroup}>
+              <label>Select Branch</label>
+              <select 
+                className={adminStyles.input} 
+                value={folderBranchModal.branch} 
+                onChange={(e) => setFolderBranchModal({ ...folderBranchModal, branch: e.target.value })}
+              >
+                {ALL_BRANCH_DATA.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+            <div className={adminStyles.modalActions} style={{ marginTop: 24 }}>
+              <button className="btn btn-outline" onClick={() => setFolderBranchModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSaveFolderBranch}>Update Branch</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -1328,7 +1362,16 @@ function StudentsTab() {
                   <td><WarningBadge count={s.warnings} /></td>
                   <td>
                     <div className={adminStyles.actionButtons}>
-                      <button className="btn btn-outline" onClick={() => { setEditing(s); setFormData({ usn: s.usn, name: s.name, email: s.email || "", branch: s.branch || "CS", password: "" }); setShowModal(true); }}>Edit</button>
+                      <button className="btn btn-outline" onClick={() => { 
+                        let bID = s.branch || "CS";
+                        // Normalize legacy full names to IDs if necessary
+                        const match = ALL_BRANCH_DATA.find(b => b.name === bID || b.id === bID);
+                        if (match) bID = match.id;
+                        
+                        setEditing(s); 
+                        setFormData({ usn: s.usn, name: s.name, email: s.email || "", branch: bID, password: "" }); 
+                        setShowModal(true); 
+                      }}>Edit</button>
                       <button className="btn btn-outline" onClick={() => { const p = prompt("Enter new password:"); if (p) updateAdminStudent(s.student_id, { password: p }).then(() => alert("Password reset")); }}>Reset PW</button>
                       <button className="btn btn-outline" style={{ color: "var(--accent)", borderColor: "var(--accent)" }} onClick={() => handleResetExam(s.student_id)}>Re-Exam</button>
                       <button className="btn btn-outline text-danger" onClick={() => handleDelete(s.student_id)}>Delete</button>
@@ -1362,7 +1405,7 @@ function StudentsTab() {
             <div className={adminStyles.formGroup}>
               <label>Branch</label>
               <select className={adminStyles.input} value={formData.branch} onChange={(e) => setFormData({ ...formData, branch: e.target.value })}>
-                {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+                {ALL_BRANCH_DATA.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
             <div className={adminStyles.formGroup}>
