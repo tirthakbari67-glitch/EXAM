@@ -1251,46 +1251,59 @@ function QuestionsTab() {
 
       {folderBranchModal && (
         <div className={adminStyles.modalOverlay} onClick={() => setFolderBranchModal(null)}>
-          <div className={adminStyles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 450 }}>
-            <h3 style={{ marginBottom: 8 }}>Manage Node Branches</h3>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
-              Select which departments should have access to <strong>{folderBranchModal.name}</strong>.
+          <div className={adminStyles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 650 }}>
+            <h3 style={{ marginBottom: 12 }}>Manage Node Branches</h3>
+            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 24, lineHeight: 1.5 }}>
+              Select which departments should have access to <strong>{folderBranchModal.name}</strong>. Students in selected branches will see these questions.
             </p>
             
             <div className={adminStyles.formGroup}>
-              <label style={{ marginBottom: 12, display: "block", fontWeight: 600 }}>Available Branches</label>
+              <label style={{ marginBottom: 14, display: "block", fontWeight: 700, color: "rgba(255,255,255,0.9)", fontSize: 13 }}>AVAILABLE DEPARTMENTS</label>
               <div style={{ 
                 display: "grid", 
-                gridTemplateColumns: "1fr 1fr", 
-                gap: "12px 16px",
-                background: "rgba(0,0,0,0.02)",
-                padding: 16,
-                borderRadius: 12,
-                border: "1px solid var(--border)"
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", 
+                gap: "10px 20px",
+                background: "rgba(255,255,255,0.03)",
+                padding: "20px",
+                borderRadius: "16px",
+                border: "1px solid rgba(255,255,255,0.1)",
+                maxHeight: "400px",
+                overflowY: "auto"
               }}>
                 {ALL_BRANCH_DATA.map((b) => {
                   const isChecked = folderBranchModal.branches.includes(b.id);
                   return (
                     <label key={b.id} style={{ 
                       display: "flex", 
-                      alignItems: "center", 
-                      gap: 10, 
+                      alignItems: "flex-start", 
+                      gap: 12, 
                       cursor: "pointer",
-                      fontSize: 14,
-                      userSelect: "none"
+                      padding: "10px 12px",
+                      borderRadius: "10px",
+                      background: isChecked ? "rgba(139, 92, 246, 0.15)" : "transparent",
+                      border: isChecked ? "1px solid rgba(139, 92, 246, 0.3)" : "1px solid transparent",
+                      transition: "all 0.2s ease"
                     }}>
-                      <input 
-                        type="checkbox" 
-                        checked={isChecked}
-                        onChange={(e) => {
-                          const newBranches = e.target.checked
-                            ? [...folderBranchModal.branches, b.id]
-                            : folderBranchModal.branches.filter(id => id !== b.id);
-                          setFolderBranchModal({ ...folderBranchModal, branches: newBranches });
-                        }}
-                        style={{ width: 18, height: 18, cursor: "pointer", accentColor: "var(--accent)" }}
-                      />
-                      <span style={{ color: isChecked ? "var(--text-primary)" : "var(--text-muted)", fontWeight: isChecked ? 600 : 400 }}>
+                      <div style={{ paddingTop: 2 }}>
+                        <input 
+                          type="checkbox" 
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const newBranches = e.target.checked
+                              ? [...folderBranchModal.branches, b.id]
+                              : folderBranchModal.branches.filter(id => id !== b.id);
+                            setFolderBranchModal({ ...folderBranchModal, branches: newBranches });
+                          }}
+                          style={{ width: 18, height: 18, cursor: "pointer", accentColor: "#8b5cf6" }}
+                        />
+                      </div>
+                      <span style={{ 
+                        color: isChecked ? "#ffffff" : "rgba(255,255,255,0.6)", 
+                        fontWeight: isChecked ? 600 : 400,
+                        fontSize: 13,
+                        lineHeight: 1.4,
+                        userSelect: "none"
+                      }}>
                         {b.name}
                       </span>
                     </label>
