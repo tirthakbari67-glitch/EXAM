@@ -311,10 +311,10 @@ export async function renameAdminFolder(oldName: string, newName: string): Promi
   });
 }
 
-export async function editAdminFolderBranch(folderName: string, newBranch: string): Promise<void> {
+export async function editAdminFolderBranch(folderName: string, newBranches: string[]): Promise<void> {
   await adminFetch(`/admin/folders/${encodeURIComponent(folderName)}/branch`, {
     method: "PATCH",
-    body: JSON.stringify({ new_branch: newBranch }),
+    body: JSON.stringify({ new_branches: newBranches }),
   });
 }
 

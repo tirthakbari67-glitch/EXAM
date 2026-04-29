@@ -254,4 +254,4 @@ class FolderRenameRequest(BaseModel):
 
 
 class FolderEditBranchRequest(BaseModel):
-    new_branch: str
+    new_branches: List[str]

@@ -527,27 +527,49 @@ async def rename_folder(folder_name: str, request: FolderRenameRequest, _: bool 
 @router.patch("/folders/{folder_name}/branch")
 async def edit_folder_branch(folder_name: str, request: FolderEditBranchRequest, _: bool = Depends(verify_admin)):
     """
-    Update the branch for an entire Isolation Node (Folder).
+    Update/Sync the branches for an entire Isolation Node (Folder).
+    Supports multi-branch assignment by duplicating questions across selected branches.
     """
     db = get_supabase()
-    new_branch = request.new_branch.strip()
+    target_branches = [b.strip() for b in request.new_branches if b.strip()]
+    if not target_branches:
+        raise HTTPException(status_code=400, detail="At least one branch must be selected")
+
+    # 1. Fetch all existing questions for this folder
+    res = db.table("questions").select("*").eq("exam_name", folder_name).execute()
+    existing_questions = res.data or []
     
-    # Discovery
-    probe = db.table("questions").select("*").limit(1).execute()
-    has_exam_column = False
-    if probe.data and len(probe.data) > 0:
-        has_exam_column = "exam_name" in probe.data[0].keys()
+    # 2. Group existing by branch
+    by_branch = {}
+    for q in existing_questions:
+        br = q.get("branch", "CS")
+        if br not in by_branch: by_branch[br] = []
+        by_branch[br].append(q)
+    
+    existing_branches = list(by_branch.keys())
+    
+    # 3. Reference set for copying (use the first available branch's questions as template)
+    reference_qs = existing_questions if not existing_branches else by_branch[existing_branches[0]]
+    
+    # 4. Handle Deletions: Remove branches no longer in target list
+    for br in existing_branches:
+        if br not in target_branches:
+            db.table("questions").delete().eq("exam_name", folder_name).eq("branch", br).execute()
+            
+    # 5. Handle Additions: Create questions for new target branches
+    for br in target_branches:
+        if br not in existing_branches:
+            # Copy all questions from reference to this new branch
+            new_rows = []
+            for q in reference_qs:
+                new_q = {k: v for k, v in q.items() if k != "id"} # Strip ID for new insert
+                new_q["branch"] = br
+                new_rows.append(new_q)
+            
+            if new_rows:
+                db.table("questions").insert(new_rows).execute()
 
-    if has_exam_column:
-        db.table("questions").update({"branch": new_branch}).eq("exam_name", folder_name).execute()
-    else:
-        # Spectral Tag Rename: Fetch and batch update
-        tag_prefix = f"⟦EXAM:{folder_name}⟧"
-        res = db.table("questions").select("id").like("text", f"{tag_prefix}%").execute()
-        for q in res.data:
-            db.table("questions").update({"branch": new_branch}).eq("id", q["id"]).execute()
-
-    return {"status": "success", "folder": folder_name, "new_branch": new_branch}
+    return {"status": "success", "folder": folder_name, "branches": target_branches}
 
 
 # ── Crystalline Data Export ───────────────────────────────────

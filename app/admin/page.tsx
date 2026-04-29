@@ -794,7 +794,7 @@ function QuestionsTab() {
     exam_name: "General Assessment",
     image_url: ""
   });
-  const [folderBranchModal, setFolderBranchModal] = useState<{ name: string, branch: string } | null>(null);
+  const [folderBranchModal, setFolderBranchModal] = useState<{ name: string, branches: string[] } | null>(null);
 
 
   const load = useCallback(async () => {
@@ -869,19 +869,22 @@ function QuestionsTab() {
   };
 
   const handleEditBranchFolder = (folderName: string) => {
-    // Find current branch of this folder (from first question)
-    const currentBranch = questions.find(q => q.exam_name === folderName)?.branch || "CS";
-    setFolderBranchModal({ name: folderName, branch: currentBranch });
+    // Find unique branches currently assigned to this folder
+    const currentBranches = questions
+      .filter(q => q.exam_name === folderName)
+      .map(q => q.branch || "CS")
+      .filter((v, i, a) => a.indexOf(v) === i); // Get unique branches
+
+    setFolderBranchModal({ name: folderName, branches: currentBranches.length ? currentBranches : ["CS"] });
   };
 
   const handleSaveFolderBranch = async () => {
     if (!folderBranchModal) return;
+    if (folderBranchModal.branches.length === 0) return alert("Please select at least one branch");
     try {
       setLoading(true);
-      await editAdminFolderBranch(folderBranchModal.name, folderBranchModal.branch);
-      setQuestions(questions.map(q => 
-        q.exam_name === folderBranchModal.name ? { ...q, branch: folderBranchModal.branch } : q
-      ));
+      await editAdminFolderBranch(folderBranchModal.name, folderBranchModal.branches);
+      load(); // Reload all to get updated branch mapping
       setFolderBranchModal(null);
     } catch (error: any) {
       alert(`Failed to update branch: ${error.message}`);
@@ -1248,24 +1251,57 @@ function QuestionsTab() {
 
       {folderBranchModal && (
         <div className={adminStyles.modalOverlay} onClick={() => setFolderBranchModal(null)}>
-          <div className={adminStyles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
-            <h3>Edit Folder Branch</h3>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
-              Updating the branch for <strong>{folderBranchModal.name}</strong> will affect all questions inside it.
+          <div className={adminStyles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 450 }}>
+            <h3 style={{ marginBottom: 8 }}>Manage Node Branches</h3>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
+              Select which departments should have access to <strong>{folderBranchModal.name}</strong>.
             </p>
+            
             <div className={adminStyles.formGroup}>
-              <label>Select Branch</label>
-              <select 
-                className={adminStyles.input} 
-                value={folderBranchModal.branch} 
-                onChange={(e) => setFolderBranchModal({ ...folderBranchModal, branch: e.target.value })}
-              >
-                {ALL_BRANCH_DATA.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
+              <label style={{ marginBottom: 12, display: "block", fontWeight: 600 }}>Available Branches</label>
+              <div style={{ 
+                display: "grid", 
+                gridTemplateColumns: "1fr 1fr", 
+                gap: "12px 16px",
+                background: "rgba(0,0,0,0.02)",
+                padding: 16,
+                borderRadius: 12,
+                border: "1px solid var(--border)"
+              }}>
+                {ALL_BRANCH_DATA.map((b) => {
+                  const isChecked = folderBranchModal.branches.includes(b.id);
+                  return (
+                    <label key={b.id} style={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: 10, 
+                      cursor: "pointer",
+                      fontSize: 14,
+                      userSelect: "none"
+                    }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const newBranches = e.target.checked
+                            ? [...folderBranchModal.branches, b.id]
+                            : folderBranchModal.branches.filter(id => id !== b.id);
+                          setFolderBranchModal({ ...folderBranchModal, branches: newBranches });
+                        }}
+                        style={{ width: 18, height: 18, cursor: "pointer", accentColor: "var(--accent)" }}
+                      />
+                      <span style={{ color: isChecked ? "var(--text-primary)" : "var(--text-muted)", fontWeight: isChecked ? 600 : 400 }}>
+                        {b.name}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
-            <div className={adminStyles.modalActions} style={{ marginTop: 24 }}>
+
+            <div className={adminStyles.modalActions} style={{ marginTop: 32 }}>
               <button className="btn btn-outline" onClick={() => setFolderBranchModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSaveFolderBranch}>Update Branch</button>
+              <button className="btn btn-primary" onClick={handleSaveFolderBranch}>Sync Branches</button>
             </div>
           </div>
         </div>
