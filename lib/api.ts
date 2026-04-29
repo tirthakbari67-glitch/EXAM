@@ -311,6 +311,13 @@ export async function renameAdminFolder(oldName: string, newName: string): Promi
   });
 }
 
+export async function editAdminFolderBranch(folderName: string, newBranch: string): Promise<void> {
+  await adminFetch(`/admin/folders/${encodeURIComponent(folderName)}/branch`, {
+    method: "PATCH",
+    body: JSON.stringify({ new_branch: newBranch }),
+  });
+}
+
 export async function uploadQuestionImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);

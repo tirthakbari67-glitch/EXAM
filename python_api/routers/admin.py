@@ -9,6 +9,7 @@ from models.schemas import (
     QuestionCreate, QuestionUpdate,
     StudentStatus, StudentCreate, StudentUpdate,
     ExamConfig, ExamConfigUpdate, FolderRenameRequest,
+    FolderEditBranchRequest
 )
 from datetime import datetime, timezone
 import io
@@ -521,6 +522,32 @@ async def rename_folder(folder_name: str, request: FolderRenameRequest, _: bool 
             db.table("questions").update({"text": updated_text}).eq("id", q["id"]).execute()
 
     return {"status": "success", "old_name": folder_name, "new_name": new_name}
+
+
+@router.patch("/folders/{folder_name}/branch")
+async def edit_folder_branch(folder_name: str, request: FolderEditBranchRequest, _: bool = Depends(verify_admin)):
+    """
+    Update the branch for an entire Isolation Node (Folder).
+    """
+    db = get_supabase()
+    new_branch = request.new_branch.strip()
+    
+    # Discovery
+    probe = db.table("questions").select("*").limit(1).execute()
+    has_exam_column = False
+    if probe.data and len(probe.data) > 0:
+        has_exam_column = "exam_name" in probe.data[0].keys()
+
+    if has_exam_column:
+        db.table("questions").update({"branch": new_branch}).eq("exam_name", folder_name).execute()
+    else:
+        # Spectral Tag Rename: Fetch and batch update
+        tag_prefix = f"⟦EXAM:{folder_name}⟧"
+        res = db.table("questions").select("id").like("text", f"{tag_prefix}%").execute()
+        for q in res.data:
+            db.table("questions").update({"branch": new_branch}).eq("id", q["id"]).execute()
+
+    return {"status": "success", "folder": folder_name, "new_branch": new_branch}
 
 
 # ── Crystalline Data Export ───────────────────────────────────

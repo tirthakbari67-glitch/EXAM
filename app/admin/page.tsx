@@ -16,6 +16,7 @@ import {
   exportResults,
   deleteAdminFolder,
   renameAdminFolder,
+  editAdminFolderBranch,
   uploadQuestionImage,
   fetchBranchExamSummary,
   AdminQuestion,
@@ -864,6 +865,23 @@ function QuestionsTab() {
     }
   };
 
+  const handleEditBranchFolder = async (folderName: string) => {
+    const newBranch = prompt(`Enter new branch ID for Isolation Node '${folderName}' (e.g. CS, IS, EC):`, "CS");
+    if (!newBranch) return;
+
+    try {
+      setLoading(true);
+      await editAdminFolderBranch(folderName, newBranch.trim());
+      setQuestions(questions.map(q => 
+        q.exam_name === folderName ? { ...q, branch: newBranch.trim() } : q
+      ));
+    } catch (error: any) {
+      alert(`Failed to update branch: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredQuestions = selectedBranch === "All" ? questions : questions.filter((q) => q.branch === selectedBranch);
 
   // Group by exam_name
@@ -987,6 +1005,10 @@ function QuestionsTab() {
                             onClick={() => handleRenameFolder(name)}
                           >Rename</button>
                           <button
+                            style={{ fontSize: 11, padding: "3px 10px", borderRadius: 8, border: `1px solid ${palette.border}`, background: "transparent", color: palette.accent, cursor: "pointer", fontWeight: 600 }}
+                            onClick={() => handleEditBranchFolder(name)}
+                          >Edit Branch</button>
+                          <button
                             style={{ fontSize: 11, padding: "3px 10px", borderRadius: 8, border: "1px solid rgba(211,47,47,0.3)", background: "transparent", color: "var(--danger)", cursor: "pointer", fontWeight: 600 }}
                             onClick={() => handleDeleteFolder(name)}
                           >Delete</button>
@@ -1060,6 +1082,8 @@ function QuestionsTab() {
                           <div className={adminStyles.nodeActions}>
                             <button className="btn btn-outline" style={{ fontSize: 12, padding: "4px 12px" }}
                               onClick={() => handleRenameFolder(name)}>Rename</button>
+                            <button className="btn btn-outline" style={{ fontSize: 12, padding: "4px 12px" }}
+                              onClick={() => handleEditBranchFolder(name)}>Edit Branch</button>
                             <button className="btn btn-outline btn-danger" style={{ fontSize: 12, padding: "4px 12px" }}
                               onClick={() => handleDeleteFolder(name)}>Delete Folder</button>
                           </div>
