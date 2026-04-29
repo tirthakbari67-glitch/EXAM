@@ -220,6 +220,18 @@
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
 }
 
+/* Ensure inputs inside dark modals have light text */
+.modal .input,
+.modal select.input {
+  color: #f1f5f9 !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.modal .input::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
 .modalActions {
   display: flex;
   justify-content: flex-end;
